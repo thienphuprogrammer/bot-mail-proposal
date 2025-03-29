@@ -1,0 +1,55 @@
+{
+  "collections": {
+    "users": {
+      "schema": {
+        "_id": "ObjectId",
+        "email": "String",
+        "password_hash": "String",
+        "full_name": "String",
+        "role": "String"
+      }
+    },
+    "emails": {
+      "schema": {
+        "_id": "ObjectId",
+        "gmail_id": "String",
+        "sender": "String",
+        "subject": "String",
+        "body": "String",
+        "received_at": "Date",
+        "processed": "Boolean"
+      }
+    },
+    "proposals": {
+      "schema": {
+        "_id": "ObjectId",
+        "email_id": "ObjectId",
+        "extracted_data": {
+          "project_name": "String",
+          "description": "String",
+          "features": ["String"],
+          "deadline": "String",
+          "budget": "Number"
+        },
+        "proposal_html": "String",
+        "status": "String",
+        "created_at": "Date",
+        "updated_at": "Date",
+        "approved_by": "ObjectId",
+        "sent_email_id": "ObjectId"
+      }
+    },
+    "sent_emails": {
+      "schema": {
+        "_id": "ObjectId",
+        "proposal_id": "ObjectId",
+        "recipient": "String",
+        "subject": "String",
+        "body": "String",
+        "attachment": "String",
+        "sent_at": "Date",
+        "gmail_message_id": "String"
+      }
+    }
+  }
+}
