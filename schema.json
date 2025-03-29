@@ -1,0 +1,45 @@
+{
+    "_id": ObjectId,           // MongoDB’s unique identifier
+    "email": String,          // Unique email for login (e.g., "john.doe@company.com")
+    "password_hash": String,  // Hashed password for security
+    "full_name": String,      // Optional, e.g., "John Doe"
+    "role": String            // e.g., "editor" or "admin" for access control
+},
+{
+    "_id": ObjectId,           // MongoDB’s unique identifier
+    "gmail_id": String,       // Unique Gmail API identifier (e.g., "18a4b3c2d1e5f6g7")
+    "sender": String,         // Customer’s email (e.g., "customer@example.com")
+    "subject": String,        // Email subject line
+    "body": String,           // Full email content
+    "received_at": Date,      // Timestamp (e.g., ISODate("2023-10-15T10:00:00Z"))
+    "processed": Boolean      // True if processed, false otherwise
+}
+
+{
+    "_id": ObjectId,           // MongoDB’s unique identifier
+    "email_id": ObjectId,     // Reference to the Emails collection
+    "extracted_data": {       // JSON object from AI extraction
+      "project_name": String, // e.g., "Website Redesign"
+      "description": String,  // e.g., "Redesign company website"
+      "features": [String],   // e.g., ["Responsive design", "SEO"]
+      "deadline": String,     // e.g., "2023-12-01"
+      "budget": Number        // e.g., 5000
+    },
+    "proposal_html": String,  // HTML content of the proposal
+    "status": String,         // e.g., "pending", "approved", "sent"
+    "created_at": Date,       // Creation timestamp
+    "updated_at": Date,       // Last update timestamp
+    "approved_by": ObjectId,  // Reference to Users collection (optional)
+    "sent_email_id": ObjectId // Reference to SentEmails collection (optional)
+  }
+
+  {
+    "_id": ObjectId,           // MongoDB’s unique identifier
+    "proposal_id": ObjectId,  // Reference to the Proposals collection
+    "recipient": String,      // Customer’s email (e.g., "customer@example.com")
+    "subject": String,        // e.g., "Your Proposal for Website Redesign"
+    "body": String,           // Email content
+    "attachment": String,     // File path or cloud storage ID for the PDF
+    "sent_at": Date,          // Timestamp of sending
+    "gmail_message_id": String // Gmail API identifier for the sent email
+  }
