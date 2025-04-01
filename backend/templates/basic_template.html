@@ -1,0 +1,47 @@
+
+            <html>
+            <head>
+                <style>
+                    body { font-family: Arial, sans-serif; margin: 40px; }
+                    .header { text-align: center; margin-bottom: 30px; }
+                    .section { margin-bottom: 20px; }
+                    .section-title { font-weight: bold; margin-bottom: 10px; }
+                    .footer { text-align: center; margin-top: 30px; font-size: 0.8em; }
+                </style>
+            </head>
+            <body>
+                <div class="header">
+                    <h1>{{project_name}}</h1>
+                    <p>Proposal for {{client_name}}</p>
+                </div>
+                
+                <div class="section">
+                    <div class="section-title">Project Overview</div>
+                    <p>{{description}}</p>
+                </div>
+                
+                <div class="section">
+                    <div class="section-title">Key Features</div>
+                    <ul>
+                        {{#each features}}
+                        <li>{{this}}</li>
+                        {{/each}}
+                    </ul>
+                </div>
+                
+                <div class="section">
+                    <div class="section-title">Timeline</div>
+                    <p>The project is expected to be completed by {{deadline}}.</p>
+                </div>
+                
+                <div class="section">
+                    <div class="section-title">Budget</div>
+                    <p>The estimated cost for this project is {{budget}}.</p>
+                </div>
+                
+                <div class="footer">
+                    <p>Contact us at: contact@example.com</p>
+                </div>
+            </body>
+            </html>
+            

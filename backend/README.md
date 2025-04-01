@@ -1,99 +1,105 @@
-# Automated Proposal Generation System
+# Bot Mail Proposal System Backend
 
-This system automates the generation of business proposals based on incoming customer emails.
+A FastAPI-based backend for automatically generating and sending proposals based on email inquiries.
 
-## Key Features
+## Features
 
-- **Email Processing**: Automatically retrieves and processes customer emails
-- **AI-Powered Extraction**: Extracts requirements from email content using AI
-- **Proposal Generation**: Creates professional proposals based on extracted requirements
-- **PDF Generation**: Generates PDF version of the proposal
-- **Email Response**: Sends the proposal to the customer
-- **Workflow Management**: Tracks the entire process from email receipt to proposal delivery
-- **Multiple AI Models**: Supports both OpenAI and Azure OpenAI models
-- **Admin Interface**: Simple web interface for managing proposals
+- Email synchronization with Gmail
+- Automated proposal generation from emails
+- User authentication with JWT
+- Proposal management
 
-## Architecture
+## Project Structure
 
-The system follows a clean architecture pattern with proper separation of concerns:
-
-- **Models**: Pydantic models for data representation
-- **Repositories**: Data access layer for MongoDB
-- **Services**: Business logic layer with clear interfaces
-- **API**: FastAPI endpoints for frontend integration
-- **Prompts**: Organized AI prompt management
+```
+backend/
+├── src/                     # Source code
+│   ├── api/                 # API endpoints
+│   │   └── v1/              # API version 1
+│   │       ├── auth/        # Authentication routes
+│   │       ├── emails/      # Email management routes
+│   │       └── proposals/   # Proposal management routes
+│   ├── core/                # Core modules (config, constants)
+│   ├── database/            # Database connections
+│   ├── models/              # Pydantic models
+│   ├── services/            # Business logic services
+│   └── utils/               # Utility functions
+├── templates/               # Email templates
+├── scripts/                 # Utility scripts
+├── logs/                    # Application logs
+├── data/                    # Application data
+├── credentials/             # Auth credentials (Gmail API, etc.)
+├── run.py                   # Main entry point
+├── requirements.txt         # Python dependencies
+└── .env.example             # Example environment variables
+```
 
 ## Setup
 
 1. Clone the repository
-2. Create a virtual environment: `python -m venv venv`
-3. Activate the virtual environment:
-   - Windows: `venv\Scripts\activate`
-   - Unix/MacOS: `source venv/bin/activate`
-4. Install dependencies: `pip install -r requirements.txt`
-5. Copy `.env.example` to `.env` and configure the environment variables
-6. Set up MongoDB (local or cloud)
-7. Set up Gmail API credentials (follow [Google's guide](https://developers.google.com/gmail/api/quickstart/python))
-8. Configure OpenAI or Azure OpenAI credentials
+2. Create a virtual environment:
+   ```
+   python -m venv venv
+   source venv/bin/activate  # On Windows: venv\Scripts\activate
+   ```
+3. Install dependencies:
+   ```
+   pip install -r requirements.txt
+   ```
+4. Copy `.env.example` to `.env` and update with your settings:
+   ```
+   cp .env.example .env
+   ```
+5. Set up the application environment:
+   ```
+   python run.py setup
+   ```
+   
+## Running the Application
 
-## Starting the Application
-
-```bash
-uvicorn src.main:app --reload
-```
-
-## API Endpoints
-
-- **Authentication**:
-  - `POST /token`: Authenticate and get JWT token
-  - `POST /users`: Register a new user
-  - `GET /users/me`: Get current user information
-
-- **Email Management**:
-  - `POST /emails/process`: Process new emails
-  - `GET /emails`: List all emails
-  - `GET /emails/{email_id}`: Get email details
-
-- **Proposal Management**:
-  - `GET /proposals`: List all proposals
-  - `GET /proposals/{proposal_id}`: Get proposal details
-  - `POST /proposals/{proposal_id}/approve`: Approve a proposal
-  - `POST /proposals/{proposal_id}/generate-pdf`: Generate PDF for proposal
-  - `POST /proposals/{proposal_id}/send`: Send proposal to customer
-
-- **Workflow**:
-  - `GET /workflow/{email_id}`: Get complete workflow information
-
-## Folder Structure
+### API Server
 
 ```
-src/
-├── api/            # API endpoints
-├── core/           # Core configuration
-├── database/       # Database connections
-├── models/         # Pydantic models
-├── prompts/        # AI prompts
-├── repositories/   # Data access layer
-├── services/       # Business logic
-│   ├── authentication/  # Authentication services
-│   ├── gmail/           # Email services
-│   ├── model/           # AI model services
-│   └── proposal/        # Proposal processing services
-├── utils/          # Utility functions
-├── .env.example    # Example environment variables
-├── main.py         # FastAPI application entry point
-├── streamlit_app.py # Streamlit admin interface
-└── requirements.txt # Project dependencies
+python run.py api
 ```
 
-## Contributing
+The API will be available at http://localhost:8000
 
-1. Fork the repository
-2. Create a feature branch: `git checkout -b my-feature`
-3. Commit your changes: `git commit -am 'Add new feature'`
-4. Push to the branch: `git push origin my-feature`
-5. Submit a pull request
+### API Documentation
 
-## License
+- Swagger UI: http://localhost:8000/docs
+- ReDoc: http://localhost:8000/redoc
 
-This project is licensed under the MIT License. 
+## Development
+
+### Adding a New Route
+
+1. Create your route file in the appropriate API module
+2. Import and register the router in `src/api/v1/router.py`
+
+### Database Migrations
+
+MongoDB doesn't require formal migrations, but index updates are defined in `src/database/mongodb.py`.
+
+## API Structure
+
+### Authentication
+
+- POST `/api/v1/auth/token` - Get JWT token
+- POST `/api/v1/auth/register` - Register new user
+- GET `/api/v1/auth/me` - Get current user info
+
+### Emails
+
+- GET `/api/v1/emails/` - List all emails
+- GET `/api/v1/emails/{email_id}` - Get specific email
+- POST `/api/v1/emails/sync` - Sync emails from Gmail
+- POST `/api/v1/emails/process/{email_id}` - Process an email into a proposal
+
+### Proposals
+
+- GET `/api/v1/proposals/` - List all proposals
+- GET `/api/v1/proposals/{proposal_id}` - Get specific proposal
+- POST `/api/v1/proposals/` - Create new proposal
+- PUT `/api/v1/proposals/{proposal_id}` - Update proposal
+- POST `/api/v1/proposals/{proposal_id}/send` - Send proposal to client 

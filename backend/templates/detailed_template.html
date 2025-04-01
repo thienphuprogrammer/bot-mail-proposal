@@ -1,0 +1,96 @@
+
+            <html>
+            <head>
+                <style>
+                    body { font-family: Arial, sans-serif; margin: 40px; }
+                    .header { text-align: center; margin-bottom: 30px; }
+                    .section { margin-bottom: 30px; }
+                    .section-title { font-weight: bold; margin-bottom: 15px; font-size: 1.2em; }
+                    .subsection { margin-bottom: 15px; }
+                    .subsection-title { font-weight: bold; margin-bottom: 10px; }
+                    .footer { text-align: center; margin-top: 40px; font-size: 0.8em; }
+                    table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+                    th, td { padding: 10px; text-align: left; border-bottom: 1px solid #ddd; }
+                    th { background-color: #f2f2f2; }
+                </style>
+            </head>
+            <body>
+                <div class="header">
+                    <h1>{{project_name}}</h1>
+                    <p>Comprehensive Proposal for {{client_name}}</p>
+                    <p>Priority: {{priority}}</p>
+                </div>
+                
+                <div class="section">
+                    <div class="section-title">1. Executive Summary</div>
+                    <p>{{description}}</p>
+                </div>
+                
+                <div class="section">
+                    <div class="section-title">2. Project Scope</div>
+                    <div class="subsection">
+                        <div class="subsection-title">2.1 Objectives</div>
+                        <p>{{objectives}}</p>
+                    </div>
+                    <div class="subsection">
+                        <div class="subsection-title">2.2 Key Deliverables</div>
+                        <ul>
+                            {{#each features}}
+                            <li>{{this}}</li>
+                            {{/each}}
+                        </ul>
+                    </div>
+                </div>
+                
+                <div class="section">
+                    <div class="section-title">3. Methodology</div>
+                    <p>{{methodology}}</p>
+                </div>
+                
+                <div class="section">
+                    <div class="section-title">4. Timeline</div>
+                    <table>
+                        <tr>
+                            <th>Phase</th>
+                            <th>Description</th>
+                            <th>Duration</th>
+                        </tr>
+                        {{#each timeline}}
+                        <tr>
+                            <td>{{phase}}</td>
+                            <td>{{description}}</td>
+                            <td>{{duration}}</td>
+                        </tr>
+                        {{/each}}
+                    </table>
+                    <p>Project deadline: {{deadline}}</p>
+                </div>
+                
+                <div class="section">
+                    <div class="section-title">5. Budget</div>
+                    <table>
+                        <tr>
+                            <th>Item</th>
+                            <th>Cost</th>
+                        </tr>
+                        {{#each budget_items}}
+                        <tr>
+                            <td>{{item}}</td>
+                            <td>{{cost}}</td>
+                        </tr>
+                        {{/each}}
+                    </table>
+                    <p>Total budget: {{budget}}</p>
+                </div>
+                
+                <div class="section">
+                    <div class="section-title">6. Client Requirements</div>
+                    <p>{{client_requirements}}</p>
+                </div>
+                
+                <div class="footer">
+                    <p>Contact us at: contact@example.com | Phone: (123) 456-7890</p>
+                </div>
+            </body>
+            </html>
+            

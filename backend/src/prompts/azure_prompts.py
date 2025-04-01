@@ -1,12 +1,13 @@
 """
 Azure Deepseek model prompts.
 """
-from src.prompts.base_prompts import Prompt, PromptRegistry
+from prompts.base_prompts import Prompt, PromptRegistry
 
 # Register requirement extraction prompt
 PromptRegistry.register(
     "azure_requirement_extraction",
     Prompt(
+        name="azure_requirement_extraction",
         system_content="""
 You are an AI assistant specialized in extracting structured project requirements from customer emails.
 Your task is to analyze emails and identify key project details, converting them into a structured JSON format.
@@ -43,6 +44,7 @@ Only return the JSON, nothing else.
 PromptRegistry.register(
     "azure_proposal_generation",
     Prompt(
+        name="azure_proposal_generation",
         system_content="""
 You are an expert proposal writer with years of experience creating professional business proposals.
 Your proposals are clear, well-structured, convincing, and tailored to the specific requirements.
@@ -78,6 +80,7 @@ Make the proposal visually appealing and professional.
 PromptRegistry.register(
     "azure_pdf_generation",
     Prompt(
+        name="azure_pdf_generation",
         system_content="""
 You are an AI assistant specialized in generating PDF documents from HTML content.
 You have expertise in document formatting, layout design, and content optimization for PDF output.

@@ -2,8 +2,11 @@ from pymongo import MongoClient
 from pymongo.collection import Collection
 from pymongo.database import Database
 from typing import Dict, Any, Optional
+import logging
 
-from src.core.config import settings
+from core.config import settings
+
+logger = logging.getLogger(__name__)
 
 class MongoDB:
     """MongoDB connection and operations handler."""
@@ -17,7 +20,7 @@ class MongoDB:
         if cls._client is None:
             cls._client = MongoClient(settings.MONGODB_URI)
             cls._db = cls._client[settings.MONGODB_DB_NAME]
-            print(f"Connected to MongoDB: {settings.MONGODB_DB_NAME}")
+            logger.info(f"Connected to MongoDB: {settings.MONGODB_DB_NAME}")
     
     @classmethod
     def disconnect(cls) -> None:
@@ -26,7 +29,7 @@ class MongoDB:
             cls._client.close()
             cls._client = None
             cls._db = None
-            print("Disconnected from MongoDB")
+            logger.info("Disconnected from MongoDB")
     
     @classmethod
     def get_collection(cls, collection_name: str) -> Collection:
@@ -45,25 +48,26 @@ class MongoDB:
         # Emails collection indexes
         emails_collection = cls.get_collection("emails")
         emails_collection.create_index("gmail_id", unique=True)
-        emails_collection.create_index("processed")
+        emails_collection.create_index("is_processed")
         
         # Proposals collection indexes
         proposals_collection = cls.get_collection("proposals")
         proposals_collection.create_index("email_id")
         proposals_collection.create_index("status")
         
-        # Sent emails collection indexes
-        sent_emails_collection = cls.get_collection("sent_emails")
-        sent_emails_collection.create_index("proposal_id")
-        
-        print("Created MongoDB indexes")
+        logger.info("Created MongoDB indexes")
 
 # Initialize database connection
 def init_db():
     """Initialize database connection and setup."""
-    MongoDB.connect()
-    MongoDB.create_indexes()
-    return MongoDB
+    try:
+        MongoDB.connect()
+        MongoDB.create_indexes()
+        logger.info("Database initialized successfully")
+        return MongoDB
+    except Exception as e:
+        logger.error(f"Database initialization error: {str(e)}")
+        raise
 
 # Get a MongoDB instance
 def get_db() -> MongoDB:

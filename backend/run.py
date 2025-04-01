@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 """
-Run script for the Automated Proposal Generation System.
+Run script for the Bot Mail Proposal System.
 This script provides a command-line interface to run different components.
 """
 
@@ -19,8 +19,8 @@ def run_api():
     from src.core.config import settings
     
     # Get the host and port
-    host = os.environ.get("HOST", "127.0.0.1")
-    port = os.environ.get("PORT", "8000")
+    host = os.environ.get("API_HOST", "0.0.0.0")
+    port = os.environ.get("API_PORT", "8000")
     
     # Run uvicorn
     cmd = [
@@ -37,7 +37,7 @@ def run_api():
     subprocess.run(cmd)
 
 def run_streamlit():
-    """Run the Streamlit application."""
+    """Run the Streamlit application (if implemented)."""
     print("Starting Streamlit application...")
     
     # Run streamlit
@@ -54,7 +54,10 @@ def run_setup():
     print("Setting up the application environment...")
     
     # Create necessary directories
+    os.makedirs("data", exist_ok=True)
     os.makedirs("temp", exist_ok=True)
+    os.makedirs("logs", exist_ok=True)
+    os.makedirs("credentials", exist_ok=True)
     
     # Check if .env file exists
     env_path = Path(".env")
@@ -75,7 +78,7 @@ def run_setup():
 
 def main():
     """Main entry point."""
-    parser = argparse.ArgumentParser(description="Run Automated Proposal Generation System")
+    parser = argparse.ArgumentParser(description="Run Bot Mail Proposal System")
     
     # Add subparsers
     subparsers = parser.add_subparsers(dest="command", help="Command to run")

@@ -42,20 +42,29 @@ class PromptRegistry:
     _prompts: Dict[str, Prompt] = {}
     
     @classmethod
-    def register(cls, name: str, system_content: str, user_template: str) -> Prompt:
+    def register(cls, name: str, prompt: Optional[Prompt] = None, system_content: str = None, user_template: str = None) -> Prompt:
         """Register a new prompt.
         
         Args:
             name: The name of the prompt
-            system_content: The system content to set context for the model
-            user_template: The user template with {placeholders} for formatting
+            prompt: A Prompt object to register
+            system_content: The system content to set context for the model (if prompt not provided)
+            user_template: The user template with {placeholders} for formatting (if prompt not provided)
             
         Returns:
             The registered prompt
         """
-        prompt = Prompt(name, system_content, user_template)
-        cls._prompts[name] = prompt
-        return prompt
+        if prompt is not None:
+            # Register an existing Prompt object
+            cls._prompts[name] = prompt
+            return prompt
+        elif system_content is not None and user_template is not None:
+            # Create and register a new Prompt
+            prompt = Prompt(name, system_content, user_template)
+            cls._prompts[name] = prompt
+            return prompt
+        else:
+            raise ValueError("Either prompt object or both system_content and user_template must be provided")
     
     @classmethod
     def get(cls, name: str) -> Prompt:

@@ -1,0 +1,80 @@
+
+            <html>
+            <head>
+                <style>
+                    body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 40px; }
+                    .header { text-align: center; margin-bottom: 30px; }
+                    .logo { text-align: center; margin-bottom: 20px; }
+                    .section { margin-bottom: 25px; }
+                    .section-title { font-weight: bold; margin-bottom: 15px; font-size: 1.2em; color: #2c3e50; }
+                    .code { font-family: monospace; background-color: #f5f5f5; padding: 10px; border-radius: 5px; overflow-x: auto; }
+                    .table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+                    .table th, .table td { padding: 12px; text-align: left; border: 1px solid #ddd; }
+                    .table th { background-color: #f8f9fa; }
+                    .footer { text-align: center; margin-top: 40px; font-size: 0.8em; color: #7f8c8d; border-top: 1px solid #ecf0f1; padding-top: 20px; }
+                </style>
+            </head>
+            <body>
+                <div class="header">
+                    <h1>{{project_name}}</h1>
+                    <p>Technical Proposal for {{client_name}}</p>
+                </div>
+                
+                <div class="section">
+                    <div class="section-title">1. Project Overview</div>
+                    <p>{{description}}</p>
+                </div>
+                
+                <div class="section">
+                    <div class="section-title">2. Technical Specifications</div>
+                    <div class="table-container">
+                        <table class="table">
+                            <tr>
+                                <th>Component</th>
+                                <th>Description</th>
+                                <th>Technology</th>
+                            </tr>
+                            {{#each technical_specs}}
+                            <tr>
+                                <td>{{component}}</td>
+                                <td>{{description}}</td>
+                                <td>{{technology}}</td>
+                            </tr>
+                            {{/each}}
+                        </table>
+                    </div>
+                </div>
+                
+                <div class="section">
+                    <div class="section-title">3. Implementation Details</div>
+                    <ul>
+                        {{#each features}}
+                        <li>{{this}}</li>
+                        {{/each}}
+                    </ul>
+                </div>
+                
+                <div class="section">
+                    <div class="section-title">4. System Requirements</div>
+                    <div class="code">
+                        {{system_requirements}}
+                    </div>
+                </div>
+                
+                <div class="section">
+                    <div class="section-title">5. Development Timeline</div>
+                    <p>The development is estimated to be completed by {{deadline}}.</p>
+                </div>
+                
+                <div class="section">
+                    <div class="section-title">6. Cost Estimation</div>
+                    <p>The total cost for implementation is estimated at {{budget}}.</p>
+                </div>
+                
+                <div class="footer">
+                    <p>This technical proposal is confidential and proprietary.</p>
+                    <p>Contact: tech-team@example.com | Support: (123) 456-7890</p>
+                </div>
+            </body>
+            </html>
+            

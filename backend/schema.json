@@ -3,53 +3,104 @@
     "users": {
       "schema": {
         "_id": "ObjectId",
-        "email": "String",
+        "email": { "type": "String", "unique": true },
         "password_hash": "String",
         "full_name": "String",
-        "role": "String"
+        "role": { "type": "String", "enum": ["staff", "admin", "client"] },
+        "created_at": "Date",
+        "last_login": "Date"
       }
     },
     "emails": {
       "schema": {
         "_id": "ObjectId",
-        "gmail_id": "String",
+        "gmail_id": { "type": "String", "unique": true },
         "sender": "String",
         "subject": "String",
         "body": "String",
+        "attachments": ["String"],
         "received_at": "Date",
-        "processed": "Boolean"
+        "processing_status": {
+          "type": "String",
+          "enum": ["pending", "processing", "completed", "failed"]
+        },
+        "error_log": "String"
       }
     },
     "proposals": {
       "schema": {
         "_id": "ObjectId",
-        "email_id": "ObjectId",
+        "email_id": { "type": "ObjectId", "ref": "emails" },
         "extracted_data": {
           "project_name": "String",
           "description": "String",
-          "features": ["String"],
-          "deadline": "String",
-          "budget": "Number"
+          "key_features": ["String"],
+          "deadline": "Date",
+          "budget": "Decimal128",
+          "client_requirements": "String",
+          "priority": { "type": "String", "enum": ["low", "medium", "high"] }
         },
-        "proposal_html": "String",
-        "status": "String",
-        "created_at": "Date",
-        "updated_at": "Date",
-        "approved_by": "ObjectId",
-        "sent_email_id": "ObjectId"
+        "proposal_versions": [{
+          "html_content": "String",
+          "pdf_path": "String",
+          "version": "Number",
+          "created_at": "Date",
+          "modified_by": { "type": "ObjectId", "ref": "users" }
+        }],
+        "current_status": {
+          "type": "String",
+          "enum": ["draft", "under_review", "approved", "rejected", "sent"]
+        },
+        "approval_history": [{
+          "user_id": { "type": "ObjectId", "ref": "users" },
+          "decision": "String",
+          "timestamp": "Date",
+          "comments": "String"
+        }],
+        "timestamps": {
+          "created_at": "Date",
+          "updated_at": "Date",
+          "sent_at": "Date"
+        }
       }
     },
-    "sent_emails": {
+    "sent_communications": {
       "schema": {
         "_id": "ObjectId",
-        "proposal_id": "ObjectId",
-        "recipient": "String",
+        "proposal_id": { "type": "ObjectId", "ref": "proposals" },
+        "recipients": ["String"],
         "subject": "String",
-        "body": "String",
-        "attachment": "String",
+        "content": "String",
+        "attachments": [{
+          "path": "String",
+          "type": { "type": "String", "enum": ["proposal", "contract", "report"] }
+        }],
+        "gmail_data": {
+          "message_id": "String",
+          "thread_id": "String"
+        },
+        "delivery_status": {
+          "status": { "type": "String", "enum": ["queued", "sent", "delivered", "failed"] },
+          "error": "String",
+          "retries": "Number"
+        },
         "sent_at": "Date",
-        "gmail_message_id": "String"
+        "opened_at": "Date"
       }
     }
+  },
+  "indexes": {
+    "emails": [
+      { "gmail_id": 1 },
+      { "processing_status": 1 }
+    ],
+    "proposals": [
+      { "current_status": 1 },
+      { "timestamps.created_at": -1 }
+    ],
+    "sent_communications": [
+      { "delivery_status.status": 1 },
+      { "sent_at": -1 }
+    ]
   }
 }

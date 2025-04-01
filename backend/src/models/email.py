@@ -1,9 +1,9 @@
 from pydantic import BaseModel, Field
-from typing import Optional, List
+from typing import Optional, List, ClassVar
 from datetime import datetime
 from bson import ObjectId
 
-from src.models.user import PyObjectId
+from models.user import PyObjectId
 
 class EmailBase(BaseModel):
     """Base model for Email."""
@@ -11,14 +11,18 @@ class EmailBase(BaseModel):
     sender: str
     subject: str
     body: str
+    attachments: List[str] = []
     received_at: datetime = Field(default_factory=datetime.utcnow)
-    processed: bool = False
+    processing_status: str = "pending"  # pending, processing, completed, failed
+    error_log: Optional[str] = None
+    is_encrypted: bool = False
     
-    class Config:
-        arbitrary_types_allowed = True
-        json_encoders = {
+    model_config: ClassVar[dict] = {
+        "arbitrary_types_allowed": True,
+        "json_encoders": {
             ObjectId: str
         }
+    }
 
 class EmailCreate(EmailBase):
     """Model for creating a new email."""
@@ -28,38 +32,50 @@ class Email(EmailBase):
     """Model for an email returned from API."""
     id: PyObjectId = Field(default_factory=PyObjectId, alias="_id")
     
-    class Config:
-        allow_population_by_field_name = True
-        arbitrary_types_allowed = True
-        json_encoders = {
+    @property
+    def processed(self) -> bool:
+        """Returns True if the email has been processed successfully."""
+        return self.processing_status == "completed"
+    
+    model_config: ClassVar[dict] = {
+        "populate_by_name": True,
+        "arbitrary_types_allowed": True,
+        "json_encoders": {
             ObjectId: str
         }
+    }
 
 class EmailUpdate(BaseModel):
     """Model for updating an email."""
-    processed: Optional[bool] = None
+    processing_status: Optional[str] = None
+    error_log: Optional[str] = None
     
-    class Config:
-        arbitrary_types_allowed = True
-        json_encoders = {
+    model_config: ClassVar[dict] = {
+        "arbitrary_types_allowed": True,
+        "json_encoders": {
             ObjectId: str
         }
+    }
 
 class SentEmailBase(BaseModel):
     """Base model for a sent email."""
     proposal_id: PyObjectId
-    recipient: str
+    recipients: List[str]
     subject: str
-    body: str
-    attachment: Optional[str] = None
+    content: str
+    attachments: List[dict] = []
+    gmail_data: dict = {"message_id": "", "thread_id": ""}
+    delivery_status: dict = {"status": "queued", "error": None, "retries": 0}
     sent_at: datetime = Field(default_factory=datetime.utcnow)
-    gmail_message_id: Optional[str] = None
+    opened_at: Optional[datetime] = None
+    is_encrypted: bool = False
     
-    class Config:
-        arbitrary_types_allowed = True
-        json_encoders = {
+    model_config: ClassVar[dict] = {
+        "arbitrary_types_allowed": True,
+        "json_encoders": {
             ObjectId: str
         }
+    }
 
 class SentEmailCreate(SentEmailBase):
     """Model for creating a new sent email."""
@@ -69,9 +85,10 @@ class SentEmail(SentEmailBase):
     """Model for a sent email returned from API."""
     id: PyObjectId = Field(default_factory=PyObjectId, alias="_id")
     
-    class Config:
-        allow_population_by_field_name = True
-        arbitrary_types_allowed = True
-        json_encoders = {
+    model_config: ClassVar[dict] = {
+        "populate_by_name": True,
+        "arbitrary_types_allowed": True,
+        "json_encoders": {
             ObjectId: str
-        } 
+        }
+    } 

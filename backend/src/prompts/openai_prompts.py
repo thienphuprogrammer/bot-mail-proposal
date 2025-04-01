@@ -1,7 +1,7 @@
 """
 OpenAI model prompts.
 """
-from src.prompts.base_prompts import Prompt, PromptRegistry
+from prompts.base_prompts import Prompt, PromptRegistry
 
 # Register requirement extraction prompt for OpenAI
 PromptRegistry.register(
