@@ -14,7 +14,7 @@
     "emails": {
       "schema": {
         "_id": "ObjectId",
-        "gmail_id": { "type": "String", "unique": true },
+        "email_id": { "type": "String", "unique": true },
         "sender": "String",
         "subject": "String",
         "body": "String",
@@ -91,7 +91,7 @@
   },
   "indexes": {
     "emails": [
-      { "gmail_id": 1 },
+      { "email_id": 1 },
       { "processing_status": 1 }
     ],
     "proposals": [

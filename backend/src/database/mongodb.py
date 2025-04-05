@@ -47,7 +47,7 @@ class MongoDB:
         
         # Emails collection indexes
         emails_collection = cls.get_collection("emails")
-        emails_collection.create_index("gmail_id", unique=True)
+        emails_collection.create_index("email_id", unique=True)
         emails_collection.create_index("is_processed")
         
         # Proposals collection indexes

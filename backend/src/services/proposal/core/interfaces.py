@@ -223,20 +223,7 @@ class ProposalRenderer(ABC):
     """Interface for proposal rendering to different formats."""
     
     @abstractmethod
-    def render_html(self, proposal_id: str) -> str:
-        """
-        Render a proposal as HTML.
-        
-        Args:
-            proposal_id: ID of the proposal to render
-            
-        Returns:
-            HTML representation of the proposal
-        """
-        pass
-    
-    @abstractmethod
-    def generate_pdf(self, proposal_id: str, output_dir: str = "temp") -> Optional[str]:
+    def generate_pdf(self, content: str, output_path: str = None) -> Optional[str]:
         """
         Generate a PDF version of a proposal.
         
@@ -262,17 +249,3 @@ class ProposalRenderer(ABC):
             Path to the generated DOCX file or None if failed
         """
         pass
-    
-    @abstractmethod
-    def apply_template(self, proposal_html: str, template_id: str) -> str:
-        """
-        Apply a template to a proposal's content.
-        
-        Args:
-            proposal_html: HTML content of the proposal
-            template_id: ID of the template to apply
-            
-        Returns:
-            HTML with the template applied
-        """
-        pass 

@@ -54,7 +54,7 @@ class ProposalServiceFactory:
         Returns:
             A configured MailServiceFacade ready for fetching and processing emails
         """
-        return MailServiceFactory.create_default_gmail_facade()
+        return MailServiceFactory.create_default_outlook_facade()
 
     @staticmethod
     def create_proposal_facade(

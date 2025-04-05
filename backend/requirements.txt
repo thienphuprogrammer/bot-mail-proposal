@@ -22,6 +22,9 @@ google-auth==2.16.2
 google-auth-oauthlib==1.0.0
 google-auth-httplib2==0.1.0
 google-api-python-client==2.80.0
+msal==1.24.1
+requests==2.31.0
+beautifulsoup4==4.12.2
 
 # AI/ML
 openai==1.1.1
@@ -36,7 +39,6 @@ pydantic-core==2.14.5
 # Utilities
 python-dotenv==1.0.0
 pytest==7.2.2
-requests==2.28.2
 streamlit==1.29.0
 PyMuPDF==1.22.5
 jinja2==3.1.2 

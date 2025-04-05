@@ -36,7 +36,10 @@ class MailServiceFacade:
     def fetch_and_process_emails(self, 
                                 query: str = None, 
                                 max_results: int = 20,
-                                include_spam_trash: bool = False) -> List[Email]:
+                                folder: str = None,
+                                include_spam_trash: bool = None,
+                                only_recent: bool = None
+                                ) -> List[Email]:
         """
         Fetch, process, and categorize emails.
         
@@ -67,7 +70,10 @@ class MailServiceFacade:
             # Fetch emails from the mail service
             emails = self.mail_service.fetch_emails(
                 query=query,
-                max_results=max_results
+                max_results=max_results,
+                folder=folder,
+                include_spam_trash=include_spam_trash,
+                only_recent=only_recent
             )
 
             stats["fetched"] = len(emails)
@@ -87,7 +93,7 @@ class MailServiceFacade:
             
             # Mark emails as read
             for email in emails:
-                self.mail_service.mark_as_read(email.gmail_id)
+                self.mail_service.mark_as_read(email.email_id)
             
             # # Apply category labels - convert async to sync with run_async
             # self._apply_category_labels_sync(categorized_emails)
@@ -140,9 +146,9 @@ class MailServiceFacade:
                 
             for email in emails:
                 try:
-                    self.mail_service.apply_label(email.gmail_id, label)
+                    self.mail_service.apply_label(email.email_id, label)
                 except Exception as e:
-                    logger.error(f"Error applying label {label} to email {email.gmail_id}: {str(e)}")
+                    logger.error(f"Error applying label {label} to email {email.email_id}: {str(e)}")
     
     def _complete_stats(self, stats: Dict[str, Any], start_time: datetime) -> Dict[str, Any]:
         """Complete the statistics with timing information."""
@@ -179,7 +185,7 @@ class MailServiceFacade:
             # Create an Email object for classification
             email = Email(
                 id=email_details.get('email_id'),
-                gmail_id=email_details.get('gmail_id'),
+                email_id=email_details.get('email_id'),
                 subject=email_details.get('subject', ''),
                 sender=email_details.get('sender', ''),
                 body=email_details.get('body', ''),

@@ -56,9 +56,9 @@ class EmailRepository(MongoRepository[Email, EmailCreate]):
         
         return email_dict
     
-    def find_by_gmail_id(self, gmail_id: str) -> Optional[Email]:
-        """Find email by Gmail ID."""
-        result = self.collection.find_one({"gmail_id": gmail_id})
+    def find_by_mail_id(self, mail_id: str) -> Optional[Email]:
+        """Find email by Mail ID."""
+        result = self.collection.find_one({"mail_id": mail_id})
         return self._map_to_model(result) if result else None
     
     def find_unprocessed(self, limit: int = 10) -> List[Email]:

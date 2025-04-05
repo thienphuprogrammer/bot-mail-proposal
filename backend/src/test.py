@@ -13,9 +13,13 @@ from services.mail.core.mail_facade import MailServiceFacade
 from services.mail.core.mail_factory import MailServiceFactory
 from services.proposal.core.proposal_facade import ProposalServiceFacade
 from services.proposal.core.proposal_factory import ProposalServiceFactory
-
+from services.mail.providers.outlook_service import OutlookService
 from services.template.template_service import TemplateService
 from core.config import settings
+import httpx
+import webbrowser
+import os
+import json
 
 def initialize_services():
     # Initialize database
@@ -61,6 +65,9 @@ def initialize_services():
     template_service = TemplateService(
         template_repository=template_repository
     )
+
+    # Create Outlook service
+    outlook_service = OutlookService()  
     
     return {
         "mail_service": mail_service,
@@ -73,12 +80,15 @@ def initialize_services():
         "model_service": model_service,
         "proposal_service": proposal_facade,
         "auth_service": auth_service,
-        "template_service": template_service
+        "template_service": template_service,
+        "outlook_service": outlook_service
     }
 
 if __name__ == "__main__":
     services = initialize_services()
-    # all emails from last 30 days
-    email_id = "67ebb1318365d92757fcf3d0"
-    proposal_id = services["proposal_service"].analyze_email(email_id)
-    print(proposal_id)
+    proposal_id = "67ef458e9714ba886a87e315"
+
+    pdf = services["proposal_service"].generate_pdf(proposal_id)
+
+    
+    

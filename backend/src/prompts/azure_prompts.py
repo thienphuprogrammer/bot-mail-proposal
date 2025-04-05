@@ -60,8 +60,7 @@ PROJECT DETAILS:
 - Deadline: {deadline}
 - Budget: {budget}
 
-Generate a complete proposal with the following sections:
-1. Executive Summary (brief overview of the proposal)
+ 1. Executive Summary (brief overview of the proposal)
 2. Project Understanding (demonstrate understanding of requirements)
 3. Proposed Solution (detailed approach to meeting requirements)
 4. Features & Deliverables (detailed breakdown of features)

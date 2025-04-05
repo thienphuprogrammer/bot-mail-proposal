@@ -47,7 +47,8 @@ class AzureModelService(AIService):
         self.client = ChatCompletionsClient(
             endpoint=self.endpoint,
             credential=AzureKeyCredential(self.api_key),
-            model=self.model_name
+            model=self.model_name,
+            max_tokens=65536 # 2**16
         )
     
     def generate_text(self, prompt: str, max_tokens: int = 1000, temperature: float = 0.7) -> Optional[str]:
@@ -216,35 +217,56 @@ class AzureModelService(AIService):
             
             # Construct a prompt for the proposal generation
             proposal_prompt = f"""
-            Create a professional project proposal based on the following data:
-            {json.dumps(data, indent=2)}
-            
-            Format the proposal as clean markdown with the following sections:
-            1. Executive Summary
-            2. Client Overview
-            3. Project Scope
-            4. Approach & Methodology
-            5. Timeline & Milestones
-            6. Budget & Pricing
-            7. Team & Resources
-            8. Next Steps
-            
-            Use a clean, professional style with proper markdown formatting.
-            Include all the requirements mentioned.
-            """
+You are tasked with creating a professional project proposal based on the provided JSON data: {json.dumps(data, indent=2)}. The proposal should be tailored to the specific requirements and information contained in the JSON, which may include details such as project requirements, objectives, budget, timeline constraints, and other relevant specifications.
+
+**Instructions:**
+
+1. **Use the JSON Data:**
+   - Extract and utilize all relevant information from the provided JSON data to inform each section of the proposal.
+   - Reference specific details from the JSON where appropriate (e.g., "As per your requirement for [specific feature], we propose...") to demonstrate how your proposal addresses the client’s needs.
+
+2. **Proposal Structure:**
+   - Format the proposal with the following sections, each clearly marked with appropriate headers:
+     - **# Executive Summary**: Provide a concise overview of the entire proposal, highlighting key points and benefits.
+     - **# Project Understanding**: Demonstrate a clear understanding of the client’s requirements and objectives as outlined in the JSON data.
+     - **# Proposed Solution**: Describe in detail your approach to meeting the requirements, including methodologies, technologies, or strategies you will use.
+     - **# Features & Deliverables**: List and explain all features and deliverables that will be provided, ensuring alignment with the client’s needs.
+     - **# Timeline & Milestones**: Outline a realistic project timeline with key phases and milestones, including estimated completion dates.
+     - **# Pricing & Payment Terms**: If budget information is provided in the JSON, offer a detailed cost breakdown and payment schedule. If not, outline the pricing structure and note that final costs will be determined based on project specifics.
+     - **# About Us**: Give a brief overview of your company, emphasizing relevant experience and expertise that pertain to the project.
+     - **# Terms & Conditions**: Include standard terms and conditions applicable to the project, such as confidentiality, intellectual property rights, etc.
+
+3. **Content Guidance:**
+   - Ensure each section is comprehensive yet concise, with the Executive Summary being particularly succinct.
+   - Personalize the proposal by addressing the client directly (e.g., using their name or company if provided) and referencing their specific needs and goals.
+   - If you have additional ideas or suggestions that could enhance the project, include them in the relevant sections (e.g., Proposed Solution or Features & Deliverables), clearly marking them as optional or supplementary.
+
+4. **Style and Tone:**
+   - Write in a professional, formal tone using clear and concise language.
+   - Use persuasive language to emphasize the benefits and value of your solution.
+   - Avoid unnecessary jargon; explain technical terms if they are essential to the project.
+
+5. **Additional Elements:**
+   - Conclude the proposal with a clear call to action (e.g., “We look forward to discussing this proposal with you. Please contact us to schedule a follow-up meeting.”).
+   - Provide your company’s contact information (e.g., email, phone, website) for easy follow-up.
+
+6. **Accuracy and Completeness:**
+   - Base the proposal strictly on the provided JSON data, making reasonable assumptions only when necessary and indicating them clearly (e.g., “Assuming [detail], we suggest...”).
+   - Generate the proposal with attention to detail, ensuring clarity, coherence, and correctness, free of grammatical errors or inconsistencies.
+"""
             
             # Generate the proposal HTML
             response = self.client.complete(
                 messages=[
-                    SystemMessage(content="You are an AI assistant that creates professional project proposals in HTML format."),
+                    SystemMessage(content="You are an AI assistant that creates professional project proposals."),
                     UserMessage(content=proposal_prompt)
                 ],
                 model_extras={
                     "safe_mode": True
                 },
-                temperature=0.4
+                temperature=0.9,
             )
-            
+
             if not response:
                 logger.error("Failed to generate proposal")
                 return None
@@ -261,29 +283,29 @@ class AzureModelService(AIService):
         
         Args:
             feedback: Feedback on what to improve
-            current_html: Current HTML content of the proposal
+            current_html: Current markdown content of the proposal
             
         Returns:
-            Improved HTML content or None if improvement failed
+            Improved markdown content or None if improvement failed
         """
         try:
             logger.info("Improving proposal with Azure DeepSeek")
             
             # Construct a prompt for the improvement
             improvement_prompt = f"""
-            Improve the following proposal HTML based on this feedback:
+            Improve the following proposal markdown based on this feedback:
             
             FEEDBACK:
             {feedback}
             
-            CURRENT HTML:
+            CURRENT MARKDOWN:
             {current_html}
             
             Make the requested changes while preserving the overall structure.
-            Return the complete improved HTML.
+            Return the complete improved markdown.
             """
             
-            # Generate the improved HTML
+            # Generate the improved markdown
             response = self.client.complete(
                 messages=[
                     SystemMessage(content="You are an AI assistant that improves project proposals based on feedback."),

@@ -5,7 +5,7 @@ AI-powered proposal content generation.
 import logging
 import json
 from typing import Dict, Any, Optional, List
-from datetime import datetime
+from datetime import datetime, timedelta
 from decimal import Decimal
 
 from services.proposal.core.interfaces import ProposalGenerator
@@ -57,14 +57,14 @@ class AIProposalGenerator(ProposalGenerator):
         """
         logger.info("Extracting requirements from email")    
 
-        # Get now date
-        now = datetime.now()
+        # Set deadline 30 days in the future by default
+        future_deadline = datetime.now() + timedelta(days=30)
         
         try:    
             extracted_data = ExtractedData(
                 project_name=str(email.subject).strip(),
                 description=str(email.body).strip(),
-                deadline=now,
+                deadline=future_deadline,
                 client_requirements=email.body,
                 priority=Priority.MEDIUM
             )
@@ -77,6 +77,9 @@ class AIProposalGenerator(ProposalGenerator):
         except Exception as e:
             logger.error(f"Error extracting requirements: {str(e)}")
             return None
+        
+    def _clean_content():
+        pass
     
     def generate_proposal(self, requirements: ExtractedData) -> Optional[str]:
         """

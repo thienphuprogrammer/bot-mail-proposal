@@ -30,8 +30,8 @@ class ApprovalDecision(str, Enum):
 class ExtractedData(BaseModel):
     """Model for extracted data from emails."""
     project_name: str = Field(..., min_length=1, max_length=200, description="Name of the project")
-    description: str = Field(..., min_length=10, description="Detailed project description")
-    key_features: List[str] = Field(default_factory=list, max_items=20, description="List of key project features")
+    description: str = Field(..., min_length=3, description="Detailed project description")
+    key_features: List[str] = Field(default_factory=list, max_items=30, description="List of key project features")
     deadline: Optional[datetime] = Field(default_factory=datetime.utcnow, description="Project deadline")
     budget: Optional[Decimal] = Field(None, ge=0, description="Project budget")
     client_requirements: Optional[str] = Field(None, description="Specific client requirements")
@@ -40,6 +40,13 @@ class ExtractedData(BaseModel):
     @validator('deadline')
     def validate_deadline(cls, v):
         if v and v < datetime.utcnow():
+            # Add debugging to understand the comparison
+            current_time = datetime.utcnow()
+            print(f"Deadline validation: {v} < {current_time} = {v < current_time}")
+            # If dates are the same or deadline is in future, allow it
+            # This handles timezone issues by comparing only dates when they're close
+            if v.date() >= current_time.date() or (current_time - v).total_seconds() < 86400:  # Within 24 hours
+                return v
             raise ValueError('Deadline cannot be in the past')
         return v
     

@@ -71,8 +71,8 @@ class MailFilterService(MailFilter):
             Tuple of (is_spam, details) where details contains the reasons
         """
         # Check cache first
-        if email.gmail_id in self._classification_cache:
-            return self._classification_cache[email.gmail_id]
+        if email.email_id in self._classification_cache:
+            return self._classification_cache[email.email_id]
             
         # Initialize result details
         details = {
@@ -94,7 +94,7 @@ class MailFilterService(MailFilter):
                     "score": details["spam_score"]
                 }
                 is_spam_flag = details["spam_score"] >= 0.5
-                self._classification_cache[email.gmail_id] = (is_spam_flag, details)
+                self._classification_cache[email.email_id] = (is_spam_flag, details)
             return (is_spam_flag, details)
                 
         except Exception as e:
@@ -139,7 +139,7 @@ class MailFilterService(MailFilter):
         is_spam = details["spam_score"] >= 0.5
         
         # Cache the result
-        self._classification_cache[email.gmail_id] = (is_spam, details)
+        self._classification_cache[email.email_id] = (is_spam, details)
         
         return (is_spam, details)
     
@@ -462,7 +462,7 @@ class MailFilterService(MailFilter):
                 else:
                     categories["other"].append(email)
             except Exception as e:
-                logger.error(f"Error filtering email {email.gmail_id}: {e}")
+                logger.error(f"Error filtering email {email.email_id}: {e}")
                 categories["other"].append(email)
         
         return categories 

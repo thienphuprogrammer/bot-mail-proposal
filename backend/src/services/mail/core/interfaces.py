@@ -20,7 +20,12 @@ class BaseMailService(ABC):
     """Base interface for all email service providers."""
     
     @abstractmethod
-    def fetch_emails(self, max_results: int = 10, query: str = "") -> List[Any]:
+    def fetch_emails(self, 
+                     max_results: int = None, 
+                     query: str = None,
+                     folder: str = None,
+                     include_spam_trash: bool = None,
+                     only_recent: bool = None) -> List[Any]:
         """
         Fetch emails from the email provider.
         

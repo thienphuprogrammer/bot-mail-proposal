@@ -7,7 +7,7 @@ from models.user import PyObjectId
 
 class EmailBase(BaseModel):
     """Base model for Email."""
-    gmail_id: str
+    email_id: str
     sender: str
     subject: str
     body: str
@@ -65,6 +65,7 @@ class SentEmailBase(BaseModel):
     content: str
     attachments: List[dict] = []
     gmail_data: dict = {"message_id": "", "thread_id": ""}
+    outlook_data: dict = {"message_id": "", "thread_id": ""}
     delivery_status: dict = {"status": "queued", "error": None, "retries": 0}
     sent_at: datetime = Field(default_factory=datetime.utcnow)
     opened_at: Optional[datetime] = None

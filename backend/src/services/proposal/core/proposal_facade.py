@@ -233,49 +233,114 @@ class ProposalServiceFacade(BaseProposalService):
             logger.error(f"Error processing email {email.id}: {str(e)}")
             return None
     
-    def approve_proposal(self, proposal_id: str, approver_id: str, decision: ApprovalDecision) -> bool:
+    def approve_proposal(
+        self, 
+        proposal_id: str, 
+        user_id: str, 
+        decision: str = "approved",
+        notes: str = None
+    ) -> Dict[str, Any]:
         """
-        Approve or reject a proposal.
+        Approve or reject a proposal with optional notes.
         
         Args:
             proposal_id: ID of the proposal to approve
-            approver_id: ID of the approver
-            decision: Approval decision
+            user_id: ID of the approver
+            decision: Approval decision (approved, rejected)
+            notes: Optional notes/comments for the approval decision
             
         Returns:
-            True if approval was successful, False otherwise
+            Dictionary with status and details of the operation
         """
-        logger.info(f"Processing approval decision {decision} for proposal {proposal_id}")
+        logger.info(f"Processing approval decision '{decision}' for proposal {proposal_id}")
         
         try:
             # Get proposal
             proposal = self.proposal_repository.find_by_id(proposal_id)
             if not proposal:
                 logger.error(f"Proposal not found: {proposal_id}")
-                return False
+                return {
+                    "success": False,
+                    "error": f"Proposal not found: {proposal_id}"
+                }
+            
+            # Validate proposal status for approving
+            if proposal.current_status != "under_review":
+                return {
+                    "success": False,
+                    "error": f"Proposal is not under review. Current status: {proposal.current_status}"
+                }
                 
-            # Update proposal status
-            update = ProposalUpdate(
-                status=ProposalStatus.APPROVED if decision == ApprovalDecision.APPROVED else ProposalStatus.REJECTED,
-                approval_history=proposal.approval_history + [{
-                    "approver_id": approver_id,
-                    "decision": decision,
-                    "timestamp": datetime.utcnow()
-                }]
-            )
+            # Map string decision to enum if needed
+            approval_decision = decision
+            if isinstance(decision, str):
+                if decision.lower() == "approved":
+                    approval_decision = ApprovalDecision.APPROVED
+                elif decision.lower() == "rejected":
+                    approval_decision = ApprovalDecision.REJECTED
+                else:
+                    return {
+                        "success": False,
+                        "error": f"Invalid decision: {decision}. Must be 'approved' or 'rejected'"
+                    }
+                
+            # Create approval history entry
+            approval_entry = {
+                "approver_id": user_id,
+                "decision": approval_decision,
+                "timestamp": datetime.utcnow()
+            }
+            
+            # Add notes if provided
+            if notes:
+                approval_entry["notes"] = notes
+                
+            # Prepare the update data
+            new_status = ProposalStatus.APPROVED if approval_decision == ApprovalDecision.APPROVED else ProposalStatus.REJECTED
+            
+            # Initialize approval history array if it doesn't exist
+            approval_history = []
+            if hasattr(proposal, 'approval_history') and proposal.approval_history:
+                approval_history = proposal.approval_history
+                
+            # Prepare the update
+            update_data = {
+                "current_status": new_status,
+                "approval_history": approval_history + [approval_entry],
+                "timestamps.approved_at": datetime.utcnow(),
+                "timestamps.updated_at": datetime.utcnow()
+            }
             
             # Save changes
-            success = self.proposal_repository.update(proposal_id, update)
+            success = self.proposal_repository.update(proposal_id, update_data)
             if not success:
                 logger.error(f"Failed to update proposal {proposal_id}")
-                return False
+                return {
+                    "success": False,
+                    "error": f"Failed to update proposal {proposal_id}"
+                }
                 
             logger.info(f"Successfully processed approval decision for proposal {proposal_id}")
-            return True
+            
+            # Get the updated proposal
+            updated_proposal = self.proposal_repository.find_by_id(proposal_id)
+            
+            return {
+                "success": True,
+                "message": f"Proposal {proposal_id} has been {decision}",
+                "proposal_id": proposal_id,
+                "status": new_status,
+                "approver_id": user_id,
+                "approved_at": datetime.utcnow().isoformat(),
+                "current_version": len(updated_proposal.proposal_versions) if hasattr(updated_proposal, 'proposal_versions') else 0
+            }
             
         except Exception as e:
             logger.error(f"Error approving proposal: {str(e)}")
-            return False
+            return {
+                "success": False,
+                "error": f"Error approving proposal: {str(e)}"
+            }
     
     def regenerate_proposal(self, proposal_id: str, additional_context: Dict[str, Any] = None) -> bool:
         """
@@ -343,22 +408,29 @@ class ProposalServiceFacade(BaseProposalService):
         
         try:
             # Generate PDF
-            pdf_path = self.proposal_renderer.generate_pdf(proposal_id)
+            proposal = self.proposal_repository.find_by_id(proposal_id)
+            if not proposal:
+                logger.error(f"Proposal not found: {proposal_id}")
+                return None
+            
+            # Ensure temp directory exists
+            os.makedirs("temp", exist_ok=True)
+            
+            # Generate file name based on project name or proposal ID
+            if proposal.extracted_data and proposal.extracted_data.project_name:
+                safe_name = "".join(c if c.isalnum() else "_" for c in proposal.extracted_data.project_name)
+                output_path = os.path.join("temp", f"{safe_name}.pdf")
+            else:
+                output_path = os.path.join("temp", f"proposal_{proposal_id}.pdf")
+                
+            content = proposal.proposal_versions[-1].content
+            pdf_path = self.proposal_renderer.generate_pdf(content, output_path)
+            
             if not pdf_path:
                 logger.error(f"Failed to generate PDF for proposal {proposal_id}")
                 return None
                 
-            # Update proposal with PDF path
-            update = ProposalUpdate(
-                metadata={"pdf_path": pdf_path}
-            )
-            
-            success = self.proposal_repository.update(proposal_id, update)
-            if not success:
-                logger.error(f"Failed to update proposal {proposal_id} with PDF path")
-                return None
-                
-            logger.info(f"Successfully generated PDF for proposal {proposal_id}")
+            logger.info(f"Successfully generated PDF for proposal {proposal_id} at {pdf_path}")
             return pdf_path
             
         except Exception as e:
@@ -664,17 +736,29 @@ class ProposalServiceFacade(BaseProposalService):
             logger.error(f"Error getting email with proposal {email_id}: {str(e)}")
             return (None, None)
     
-    def send_proposal(self, proposal_id: str, recipient: str = None, cc: List[str] = None, 
-                     subject: str = None, body: str = None) -> Dict[str, Any]:
+    def send_proposal(
+        self, 
+        proposal_id: str, 
+        recipient: str = None, 
+        cc: List[str] = None,
+        bcc: List[str] = None, 
+        subject: str = None, 
+        message: str = None,
+        importance: str = "normal",
+        template_variables: Dict[str, Any] = None
+    ) -> Dict[str, Any]:
         """
-        Send a proposal by email.
+        Send a proposal by email with enhanced options.
         
         Args:
             proposal_id: ID of the proposal to send
             recipient: Optional recipient email
             cc: Optional CC recipients
+            bcc: Optional BCC recipients
             subject: Optional custom subject
-            body: Optional custom body
+            message: Optional custom message body
+            importance: Email importance (low, normal, high)
+            template_variables: Optional variables for templating
             
         Returns:
             Dictionary with results of the send operation
@@ -697,62 +781,114 @@ class ProposalServiceFacade(BaseProposalService):
                 logger.error(f"No recipient specified for proposal: {proposal_id}")
                 return {"success": False, "error": "No recipient specified"}
                 
-            # Generate PDF
-            pdf_path = self.proposal_renderer.generate_pdf(proposal_id)
+            # Generate PDF if not already generated
+            pdf_path = None
+            if hasattr(proposal, 'proposal_versions') and proposal.proposal_versions and len(proposal.proposal_versions) > 0:
+                latest_version = proposal.proposal_versions[-1]
+                if hasattr(latest_version, 'pdf_path') and latest_version.pdf_path and os.path.exists(latest_version.pdf_path):
+                    pdf_path = latest_version.pdf_path
+            
+            # Generate new PDF if needed
+            if not pdf_path:
+                pdf_path = self.proposal_renderer.generate_pdf(proposal_id)
+                
             if not pdf_path:
                 logger.error(f"Failed to generate PDF for proposal: {proposal_id}")
                 return {"success": False, "error": "Failed to generate PDF"}
-                
-            # Get client name and project title from metadata
-            client_name = proposal.metadata.get("client_name", "Client")
-            project_title = proposal.metadata.get("project_title", "Project")
-                
+            
+            # Gather proposal data for email template
+            project_name = "Project"
+            client_name = "Client"
+            company_name = settings.COMPANY_NAME if hasattr(settings, 'COMPANY_NAME') else "Your Company"
+            
+            # Try to extract from proposal data
+            if hasattr(proposal, 'extracted_data'):
+                if hasattr(proposal.extracted_data, 'project_name'):
+                    project_name = proposal.extracted_data.project_name
+                    
+                if hasattr(proposal.extracted_data, 'client_name'):
+                    client_name = proposal.extracted_data.client_name
+                    
+            # Also check metadata fields
+            if hasattr(proposal, 'metadata'):
+                if not client_name or client_name == "Client":
+                    client_name = proposal.metadata.get("client_name", client_name)
+                if not project_name or project_name == "Project":
+                    project_name = proposal.metadata.get("project_title", project_name)
+                    
             # Default subject and body if not provided
             if not subject:
-                subject = f"Proposal for {project_title}"
+                subject = f"Proposal for {project_name}"
                 
+            # Prepare email body (message)
+            body = message if message else None
             if not body:
                 body = f"""
                 <p>Dear {client_name},</p>
                 
-                <p>Thank you for your inquiry. We're pleased to submit our proposal for the {project_title} project.</p>
+                <p>Thank you for your inquiry. We're pleased to submit our proposal for the {project_name} project.</p>
                 
                 <p>Please find attached our detailed proposal. We look forward to discussing this further with you.</p>
                 
                 <p>Best regards,<br>
-                Your Company Name</p>
+                {company_name}</p>
                 """
                 
             # Send email with attachment
             if not self.mail_service:
                 logger.error("Mail service not available for sending proposal")
                 return {"success": False, "error": "Mail service not available"}
+            
+            # Prepare template variables if not provided
+            if not template_variables:
+                template_variables = {
+                    "client_name": client_name,
+                    "project_name": project_name,
+                    "company_name": company_name
+                }
                 
+                # Add proposal details if available
+                if hasattr(proposal, 'extracted_data'):
+                    if hasattr(proposal.extracted_data, 'key_features'):
+                        template_variables["features"] = proposal.extracted_data.key_features
+                    if hasattr(proposal.extracted_data, 'deadline'):
+                        template_variables["deadline"] = proposal.extracted_data.deadline
+                    if hasattr(proposal.extracted_data, 'budget'):
+                        template_variables["budget"] = proposal.extracted_data.budget
+                
+            # Send using improved email service
             result = self.mail_service.send_email(
                 to=recipient,
                 subject=subject,
                 body=body,
-                attachment_path=pdf_path,
-                cc=cc
+                attachment_paths=[pdf_path] if pdf_path else None,
+                cc=cc,
+                bcc=bcc,
+                is_html=True,
+                importance=importance,
+                template_variables=template_variables
             )
             
             # Create sent email using the proper Pydantic model
             from models.email import SentEmailCreate
             
-            # Prepare recipients list (primary + cc)
+            # Prepare recipients list (primary + cc + bcc)
             recipients = [recipient]
             if cc:
                 recipients.extend(cc)
+            if bcc:
+                recipients.extend(bcc)
             
             sent_email_create = SentEmailCreate(
                 proposal_id=proposal_id,
                 recipients=recipients,
                 subject=subject,
                 content=body,
-                attachments=[{"path": pdf_path, "name": os.path.basename(pdf_path)}],
-                gmail_data={
+                attachments=[{"path": pdf_path, "name": os.path.basename(pdf_path)}] if pdf_path else [],
+                metadata={
                     "message_id": result.get("message_id", ""),
-                    "thread_id": result.get("thread_id", "")
+                    "importance": importance,
+                    "template_variables": template_variables
                 }
             )
             
@@ -760,21 +896,21 @@ class ProposalServiceFacade(BaseProposalService):
             sent_email = self.sent_email_repository.create(sent_email_create)
             
             # Update proposal status and timestamps
-            self.proposal_repository.update(
-                proposal_id, 
-                {
-                    "current_status": ProposalStatus.SENT,
-                    "sent_email_id": str(sent_email.id),
-                    "timestamps.sent_at": datetime.utcnow()
-                }
-            )
+            update_data = {
+                "current_status": ProposalStatus.SENT,
+                "sent_email_id": str(sent_email.id),
+                "timestamps.sent_at": datetime.utcnow()
+            }
             
-            logger.info(f"Proposal sent: {proposal_id}")
+            self.proposal_repository.update(proposal_id, update_data)
+            
+            logger.info(f"Proposal sent: {proposal_id} to {recipient}")
             return {
                 "success": True, 
-                "message_id": result.get("message_id", ""),
-                "thread_id": result.get("thread_id", ""),
-                "sent_email_id": str(sent_email.id)
+                "message": f"Proposal sent successfully to {recipient}",
+                "sent_email_id": str(sent_email.id),
+                "proposal_id": proposal_id,
+                "recipient": recipient
             }
             
         except Exception as e:

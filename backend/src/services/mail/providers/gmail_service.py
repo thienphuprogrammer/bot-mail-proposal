@@ -34,7 +34,7 @@ class GmailService(BaseMailService):
     
     # Default email query parameters
     DEFAULT_QUERY_PARAMS = {
-        "max_results": 10,
+        "max_results": 100,
         "include_spam_trash": True,
         "label_ids": ["INBOX"],
         "query": "is:unread",
@@ -50,7 +50,7 @@ class GmailService(BaseMailService):
         
         # Create a cache for message IDs to avoid redundant processing
         self._processed_ids_cache = set()
-        self._cache_file = os.path.join("temp", "processed_gmail_ids.json")
+        self._cache_file = os.path.join("temp", "processed_mail_ids.json")
         self._load_processed_ids_cache()
         
         # Initialize the mail processor for content extraction
@@ -270,7 +270,7 @@ class GmailService(BaseMailService):
                 
                 # Create EmailCreate object
                 email_create = EmailCreate(
-                    gmail_id=message['id'],
+                    email_id=message['id'],
                     sender=extracted_data.get('sender', 'Unknown'),
                     subject=extracted_data.get('subject', 'No Subject'),
                     body=extracted_data.get('body', ''),

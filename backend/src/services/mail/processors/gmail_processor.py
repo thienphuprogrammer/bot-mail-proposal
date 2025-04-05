@@ -211,11 +211,11 @@ class GmailMailProcessor(MailProcessor):
             email = emails[0]
             
             # Mark as read
-            self.mail_service.mark_as_read(email.gmail_id)
+            self.mail_service.mark_as_read(email.email_id)
             
             return {
                 'email_id': email.id,
-                'gmail_id': email.gmail_id,
+                'email_id': email.email_id,
                 'subject': email.subject,
                 'sender': email.sender,
                 'receiver': '',  # TODO: Add to EmailCreate model

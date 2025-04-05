@@ -60,8 +60,8 @@ def initialize_services():
             provider="langchain" if not settings.USE_AZURE_AI else "azure"
         )
         
-        # Create mail service using factory
-        mail_facade = MailServiceFactory.create_default_gmail_facade()
+        # Create mail service using factory - use Outlook instead of Gmail
+        mail_facade = MailServiceFactory.create_default_outlook_facade()
         
         # Create proposal service using factory
         proposal_facade = ProposalServiceFactory.create_proposal_facade(
@@ -105,6 +105,27 @@ def get_download_link(file_path: str, link_text: str = "Download PDF") -> str:
         st.error(f"Failed to generate download link: {str(e)}")
         return ""
 
+# Function to display PDF viewer
+def display_pdf(file_path: str):
+    """Display a PDF in the Streamlit app."""
+    try:
+        with open(file_path, "rb") as f:
+            base64_pdf = base64.b64encode(f.read()).decode('utf-8')
+        
+        # Embed PDF viewer using HTML
+        pdf_display = f"""
+        <iframe 
+            src="data:application/pdf;base64,{base64_pdf}" 
+            width="100%" 
+            height="600" 
+            type="application/pdf"
+            frameborder="0">
+        </iframe>
+        """
+        st.markdown(pdf_display, unsafe_allow_html=True)
+    except Exception as e:
+        st.error(f"Failed to display PDF: {str(e)}")
+
 # App title and configuration
 st.set_page_config(page_title="Automated Proposal Generator", layout="wide")
 st.title("Automated Proposal Generation System")
@@ -113,6 +134,9 @@ if settings.USE_AZURE_AI:
     st.caption("Using Azure Model")
 else:
     st.caption("Using LangChain Model")
+
+# Email service info
+st.caption("Using Outlook for email services")
 
 # Initialize services
 services = initialize_services()
@@ -312,29 +336,47 @@ elif page == "Emails":
             try:
                 # Use mail service to fetch emails
                 result = services["mail_service"].fetch_and_process_emails(
-                    max_results=10,
-                    include_spam_trash=False,
-                    query=""
+                    query="isRead eq false",
+                    max_results=20,
+                    folder="inbox",
+                    include_spam_trash=True,
+                    only_recent=True
                 )
                 
                 # Check if we have processed any emails
-                if result and result.get("processed", 0) > 0:
-                    fetched_count = result.get("fetched", 0)
-                    processed_count = result.get("processed", 0)
+                if result:
+                    # Handle both dictionary and list result formats
+                    if isinstance(result, dict):
+                        # Original dictionary format
+                        fetched_count = result.get("fetched", 0) if result else 0
+                        processed_count = result.get("processed", 0) if result else 0
+                        
+                        # Get stats for different categories
+                        categories = result.get("categories", {}) if result else {}
+                        spam_count = categories.get("spam", 0) if categories else 0
+                        proposal_requests = categories.get("proposal_requests", 0) if categories else 0
+                        inquiries = categories.get("inquiries", 0) if categories else 0
+                        
+                        success_message = (
+                            f"Fetched {fetched_count} emails, processed {processed_count}: "
+                            f"{proposal_requests} proposal requests, {inquiries} inquiries, {spam_count} spam"
+                        )
+                    elif isinstance(result, list):
+                        # List format - just show the count
+                        processed_count = len(result)
+                        success_message = f"Processed {processed_count} emails"
+                    else:
+                        # Unknown result format
+                        processed_count = 0
+                        success_message = "Emails processed successfully, but count unknown"
                     
-                    # Get stats for different categories
-                    categories = result.get("categories", {})
-                    spam_count = categories.get("spam", 0)
-                    proposal_requests = categories.get("proposal_requests", 0)
-                    inquiries = categories.get("inquiries", 0)
-                    
-                    st.success(
-                        f"Fetched {fetched_count} emails, processed {processed_count}: "
-                        f"{proposal_requests} proposal requests, {inquiries} inquiries, {spam_count} spam"
-                    )
-                    
-                    # Refresh the page to show new emails
-                    st.rerun()
+                    # Show success message if any emails were processed
+                    if processed_count > 0:
+                        st.success(success_message)
+                        # Refresh the page to show new emails
+                        st.rerun()
+                    else:
+                        st.info("No new emails found")
                 else:
                     st.info("No new emails found")
             except Exception as e:
@@ -359,7 +401,7 @@ elif page == "Emails":
     
     try:
         # Get emails from database
-        emails = services["email_repository"].find_all(filter_dict=filter_dict, skip=0, limit=20)
+        emails = services["email_repository"].find_all(filter_dict=filter_dict, skip=0, limit=1000)
         
         if emails:
             # Convert to DataFrame for display
@@ -455,11 +497,12 @@ elif page == "Proposals":
                 proposal_dict = {
                     "ID": str(proposal.id),
                     "Email Subject": email_subject,
-                    "Project": proposal.extracted_data.project_name,
-                    "Deadline": proposal.extracted_data.deadline.strftime("%Y-%m-%d") if proposal.extracted_data.deadline else "Not specified",
-                    "Priority": proposal.extracted_data.priority,
-                    "Proposal Status": "Processing" if len(proposal.proposal_versions) == 0 or proposal.proposal_versions is None else "Completed",
-                    "Context": json.dumps(proposal.extracted_data[-1].context)
+                    "Project": proposal.extracted_data.project_name if hasattr(proposal, 'extracted_data') and hasattr(proposal.extracted_data, 'project_name') else "Unknown",
+                    "Deadline": proposal.extracted_data.deadline.strftime("%Y-%m-%d") if hasattr(proposal, 'extracted_data') and hasattr(proposal.extracted_data, 'deadline') and proposal.extracted_data.deadline else "Not specified",
+                    "Priority": proposal.extracted_data.priority if hasattr(proposal, 'extracted_data') and hasattr(proposal.extracted_data, 'priority') else "Medium",
+                    "Proposal Status": "Processing" if not hasattr(proposal, 'proposal_versions') or proposal.proposal_versions is None or len(proposal.proposal_versions) == 0 else "Completed",
+                    "Context": proposal.proposal_versions[-1].content if hasattr(proposal, 'proposal_versions') and proposal.proposal_versions and len(proposal.proposal_versions) > 0 and hasattr(proposal.proposal_versions[-1], 'content') else "",
+                    "Mail context": proposal.extracted_data.description if hasattr(proposal, 'extracted_data') and hasattr(proposal.extracted_data, 'description') else ""
                 }
                 proposal_data.append(proposal_dict)
             
@@ -472,7 +515,7 @@ elif page == "Proposals":
                     "Select proposal to view",
                     options=[p["ID"] for p in proposal_data],
                     format_func=lambda x: next(
-                        (f"{p['Project']} ({p['Status']})" for p in proposal_data if p["ID"] == x),
+                        (f"{p['Project']}" for p in proposal_data if p["ID"] == x),
                         x
                     )
                 )
@@ -484,36 +527,45 @@ elif page == "Proposals":
                         email = services["email_repository"].find_by_id(str(proposal.email_id))
                         
                         # Display proposal details
-                        st.subheader(f"Proposal: {proposal.extracted_data.project_name}")
-                        st.text(f"Status: {proposal.status.capitalize()}")
-                        st.text(f"Created: {proposal.created_at.strftime('%Y-%m-%d %H:%M')}")
+                        st.subheader(f"Proposal: {proposal.extracted_data.project_name if hasattr(proposal, 'extracted_data') and hasattr(proposal.extracted_data, 'project_name') else 'Unnamed Project'}")
+                        st.text(f"Created: {proposal.proposal_versions[-1].created_at.strftime('%Y-%m-%d %H:%M') if hasattr(proposal, 'proposal_versions') and proposal.proposal_versions and len(proposal.proposal_versions) > 0 and hasattr(proposal.proposal_versions[-1], 'created_at') else 'Unknown'}")
                         if email:
                             st.text(f"Email From: {email.sender}")
                         
                         # Extracted data
                         with st.expander("Extracted Requirements", expanded=True):
-                            st.write(f"**Project Name:** {proposal.extracted_data.project_name}")
-                            st.write(f"**Description:** {proposal.extracted_data.description}")
+                            st.write(f"**Project Name:** {proposal.extracted_data.project_name if hasattr(proposal, 'extracted_data') and hasattr(proposal.extracted_data, 'project_name') else 'Unknown'}")
+                            st.write(f"**Description:** {proposal.extracted_data.description if hasattr(proposal, 'extracted_data') and hasattr(proposal.extracted_data, 'description') else 'Not available'}")
                             st.write(f"**Features:**")
-                            if proposal.extracted_data.key_features:
+                            if hasattr(proposal, 'extracted_data') and hasattr(proposal.extracted_data, 'key_features') and proposal.extracted_data.key_features:
                                 for feature in proposal.extracted_data.key_features:
                                     st.write(f"- {feature}")
                             else:
                                 st.write("- General project requirements")
-                            deadline_str = proposal.extracted_data.deadline.strftime("%Y-%m-%d") if proposal.extracted_data.deadline else "Not specified"
+                            deadline_str = proposal.extracted_data.deadline.strftime("%Y-%m-%d") if hasattr(proposal, 'extracted_data') and hasattr(proposal.extracted_data, 'deadline') and proposal.extracted_data.deadline else "Not specified"
                             st.write(f"**Deadline:** {deadline_str}")
-                            st.write(f"**Budget:** {f'${proposal.extracted_data.budget}' if proposal.extracted_data.budget else 'Not specified'}")
+                            st.write(f"**Budget:** {f'${proposal.extracted_data.budget}' if hasattr(proposal, 'extracted_data') and hasattr(proposal.extracted_data, 'budget') and proposal.extracted_data.budget else 'Not specified'}")
                         
                         # Generated proposal
                         with st.expander("Generated Proposal", expanded=True):
-                            st.markdown(proposal.proposal_html, unsafe_allow_html=True)
+                            st.markdown(proposal.proposal_versions[-1].content if hasattr(proposal, 'proposal_versions') and proposal.proposal_versions and len(proposal.proposal_versions) > 0 and hasattr(proposal.proposal_versions[-1], 'content') else "No proposal content available", unsafe_allow_html=True)
+                        
+                        # Check for PDF and display
+                        pdf_path = None
+                        if hasattr(proposal, 'proposal_versions') and proposal.proposal_versions and hasattr(proposal.proposal_versions[-1], 'pdf_path'):
+                            pdf_path = proposal.proposal_versions[-1].pdf_path
+                            
+                        if pdf_path and os.path.exists(pdf_path):
+                            with st.expander("PDF Preview", expanded=True):
+                                st.markdown(get_download_link(pdf_path), unsafe_allow_html=True)
+                                display_pdf(pdf_path)
                         
                         # Approval and sending
-                        col1, col2 = st.columns(2)
+                        col1, col2, col3 = st.columns(3)
                         
                         with col1:
                             # Approve button
-                            if proposal.status == "pending":
+                            if proposal.current_status == "under_review":
                                 if st.button("Approve Proposal"):
                                     with st.spinner("Approving proposal..."):
                                         try:
@@ -531,49 +583,55 @@ elif page == "Proposals":
                                             st.error(f"Error approving proposal: {str(e)}")
                         
                         with col2:
-                            # Generate PDF and send
-                            if proposal.status == "approved":
-                                if st.button("Send Proposal to Customer"):
-                                    with st.spinner("Generating PDF and sending proposal..."):
-                                        try:
-                                            # First generate PDF
-                                            pdf_path = services["proposal_service"].generate_pdf(selected_proposal_id)
-                                            
-                                            if pdf_path:
-                                                # Then send email
-                                                if email:
-                                                    result = services["proposal_service"].send_proposal(
-                                                        selected_proposal_id,
-                                                        recipient=email.sender
-                                                    )
-                                                    
-                                                    if result["success"]:
-                                                        st.success("Proposal sent successfully!")
-                                                        st.rerun()
-                                                    else:
-                                                        st.error(f"Failed to send proposal: {result.get('error', 'Unknown error')}")
-                                                else:
-                                                    st.error("Could not find original email")
-                                            else:
-                                                st.error("Failed to generate PDF")
-                                        except Exception as e:
-                                            st.error(f"Error sending proposal: {str(e)}")
-                            
-                            # Download PDF
-                            if proposal.pdf_path and os.path.exists(proposal.pdf_path):
-                                st.markdown(get_download_link(proposal.pdf_path), unsafe_allow_html=True)
-                            else:
+                            # Generate PDF
+                            if not pdf_path or not os.path.exists(pdf_path):
                                 if st.button("Generate PDF"):
                                     with st.spinner("Generating PDF..."):
                                         try:
-                                            pdf_path = services["proposal_service"].generate_pdf(selected_proposal_id)
-                                            if pdf_path:
+                                            # Use the generate_pdf_from_proposal method if available, otherwise fallback to generate_pdf
+                                            if hasattr(services["proposal_service"].proposal_renderer, 'generate_pdf_from_proposal'):
+                                                pdf_path = services["proposal_service"].proposal_renderer.generate_pdf_from_proposal(selected_proposal_id)
+                                            else:
+                                                pdf_path = services["proposal_service"].generate_pdf(selected_proposal_id)
+                                                
+                                            if pdf_path and os.path.exists(pdf_path):
                                                 st.success("PDF generated successfully!")
                                                 st.markdown(get_download_link(pdf_path), unsafe_allow_html=True)
+                                                with st.expander("PDF Preview", expanded=True):
+                                                    display_pdf(pdf_path)
+                                                st.rerun()  # Refresh to show updated UI
                                             else:
                                                 st.error("Failed to generate PDF")
+                                                # Check for wkhtmltopdf
+                                                renderer = services["proposal_service"].proposal_renderer
+                                                if hasattr(renderer, 'wkhtmltopdf_path'):
+                                                    if not os.path.exists(renderer.wkhtmltopdf_path):
+                                                        st.error(f"wkhtmltopdf not found at configured path: {renderer.wkhtmltopdf_path}")
+                                                        st.info("Please install wkhtmltopdf: [Download Here](https://wkhtmltopdf.org/downloads.html)")
                                         except Exception as e:
                                             st.error(f"Error generating PDF: {str(e)}")
+                        
+                        with col3:
+                            # Send proposal
+                            if proposal.current_status == "approved" and pdf_path and os.path.exists(pdf_path):
+                                if st.button("Send Proposal to Customer"):
+                                    with st.spinner("Sending proposal..."):
+                                        try:
+                                            if email:
+                                                result = services["proposal_service"].send_proposal(
+                                                    selected_proposal_id,
+                                                    recipient=email.sender
+                                                )
+                                                
+                                                if result["success"]:
+                                                    st.success("Proposal sent successfully!")
+                                                    st.rerun()
+                                                else:
+                                                    st.error(f"Failed to send proposal: {result.get('error', 'Unknown error')}")
+                                            else:
+                                                st.error("Could not find original email")
+                                        except Exception as e:
+                                            st.error(f"Error sending proposal: {str(e)}")
         else:
             st.info(f"No proposals found with status: {status_filter}")
             
@@ -592,24 +650,44 @@ elif page == "Sent Proposals":
             # Convert to DataFrame for display
             sent_data = []
             for sent in sent_emails:
-                # Get proposal
-                proposal = services["proposal_repository"].find_by_id(str(sent.proposal_id))
-                project_name = proposal.extracted_data.project_name if proposal else "Unknown"
-                
-                sent_dict = {
-                    "ID": str(sent.id),
-                    "Recipient": sent.recipients[0] if sent.recipients else "Unknown",
-                    "Project": project_name,
-                    "Subject": sent.subject,
-                    "Sent": sent.sent_at.strftime("%Y-%m-%d %H:%M")
-                }
-                sent_data.append(sent_dict)
+                try:
+                    # Get proposal
+                    proposal = None
+                    project_name = "Unknown"
+                    if hasattr(sent, 'proposal_id') and sent.proposal_id:
+                        try:
+                            proposal = services["proposal_repository"].find_by_id(str(sent.proposal_id))
+                            if proposal and hasattr(proposal, 'extracted_data') and hasattr(proposal.extracted_data, 'project_name'):
+                                project_name = proposal.extracted_data.project_name
+                        except Exception:
+                            # Keep default project_name if error occurs
+                            pass
+                    
+                    recipients = []
+                    if hasattr(sent, 'recipients') and sent.recipients:
+                        recipients = sent.recipients
+                    
+                    sent_at = None
+                    if hasattr(sent, 'sent_at') and sent.sent_at:
+                        sent_at = sent.sent_at
+                    
+                    sent_dict = {
+                        "ID": str(sent.id) if hasattr(sent, 'id') else "Unknown",
+                        "Recipient": recipients[0] if recipients else "Unknown",
+                        "Project": project_name,
+                        "Subject": sent.subject if hasattr(sent, 'subject') else "Unknown",
+                        "Sent": sent_at.strftime("%Y-%m-%d %H:%M") if sent_at else "Unknown"
+                    }
+                    sent_data.append(sent_dict)
+                except Exception as e:
+                    st.warning(f"Error processing sent email: {str(e)}")
+                    continue
             
-            df = pd.DataFrame(sent_data)
-            st.dataframe(df)
-            
-            # View sent email details
             if sent_data:
+                df = pd.DataFrame(sent_data)
+                st.dataframe(df)
+                
+                # View sent email details
                 selected_sent_id = st.selectbox(
                     "Select sent email to view",
                     options=[s["ID"] for s in sent_data],
@@ -620,30 +698,70 @@ elif page == "Sent Proposals":
                 )
                 
                 if selected_sent_id:
-                    sent = services["sent_email_repository"].find_by_id(selected_sent_id)
-                    if sent:
-                        # Get proposal
-                        proposal = services["proposal_repository"].find_by_id(str(sent.proposal_id))
-                        
-                        st.subheader(f"Sent Proposal: {sent.subject}")
-                        st.text(f"To: {sent.recipients[0] if sent.recipients else 'Unknown'}")
-                        st.text(f"Sent: {sent.sent_at.strftime('%Y-%m-%d %H:%M')}")
-                        
-                        # Email body
-                        with st.expander("Email Body", expanded=True):
-                            st.markdown(sent.content, unsafe_allow_html=True)
-                        
-                        # Attachment
-                        if sent.attachments and len(sent.attachments) > 0:
-                            for attachment in sent.attachments:
-                                if "path" in attachment and os.path.exists(attachment["path"]):
-                                    attachment_name = attachment.get("name", os.path.basename(attachment["path"]))
-                                    st.markdown(get_download_link(attachment["path"], f"Download {attachment_name}"), unsafe_allow_html=True)
-                        
-                        # Link to proposal
-                        if proposal:
-                            proposal_link = f"[View Full Proposal Details](#Proposals)"
-                            st.markdown(proposal_link)
+                    try:
+                        sent = services["sent_email_repository"].find_by_id(selected_sent_id)
+                        if sent:
+                            # Get proposal
+                            proposal = None
+                            if hasattr(sent, 'proposal_id') and sent.proposal_id:
+                                try:
+                                    proposal = services["proposal_repository"].find_by_id(str(sent.proposal_id))
+                                except Exception:
+                                    pass
+                            
+                            # Safely get subject
+                            subject = "Sent Proposal"
+                            if hasattr(sent, 'subject') and sent.subject:
+                                subject = sent.subject
+                            
+                            # Safely get recipients
+                            recipient = "Unknown"
+                            if hasattr(sent, 'recipients') and sent.recipients and len(sent.recipients) > 0:
+                                recipient = sent.recipients[0]
+                            
+                            # Safely get sent time
+                            sent_time_str = "Unknown time"
+                            if hasattr(sent, 'sent_at') and sent.sent_at:
+                                sent_time_str = sent.sent_at.strftime("%Y-%m-%d %H:%M")
+                            
+                            st.subheader(f"Sent Proposal: {subject}")
+                            st.text(f"To: {recipient}")
+                            st.text(f"Sent: {sent_time_str}")
+                            
+                            # Email body
+                            with st.expander("Email Body", expanded=True):
+                                if hasattr(sent, 'content') and sent.content:
+                                    st.markdown(sent.content, unsafe_allow_html=True)
+                                else:
+                                    st.info("No email content available")
+                            
+                            # Attachment handling and PDF preview
+                            has_attachments = False
+                            if hasattr(sent, 'attachments') and sent.attachments and len(sent.attachments) > 0:
+                                for attachment in sent.attachments:
+                                    if isinstance(attachment, dict) and "path" in attachment and os.path.exists(attachment["path"]):
+                                        has_attachments = True
+                                        attachment_name = os.path.basename(attachment["path"])
+                                        if "name" in attachment and attachment["name"]:
+                                            attachment_name = attachment["name"]
+                                        st.markdown(get_download_link(attachment["path"], f"Download {attachment_name}"), unsafe_allow_html=True)
+                                        
+                                        # If it's a PDF, show preview
+                                        if attachment["path"].lower().endswith('.pdf'):
+                                            with st.expander("PDF Preview", expanded=True):
+                                                display_pdf(attachment["path"])
+                            
+                            if not has_attachments:
+                                st.warning("Attachments are not available or have been moved")
+                            
+                            # Link to proposal
+                            if proposal:
+                                proposal_link = f"[View Full Proposal Details](#Proposals)"
+                                st.markdown(proposal_link)
+                    except Exception as e:
+                        st.error(f"Error displaying sent email: {str(e)}")
+            else:
+                st.info("No valid sent proposal data available")
         else:
             st.info("No sent proposals found")
             
@@ -660,83 +778,139 @@ elif page == "Workflow Analysis":
         
         if emails:
             workflow_data = []
+            error_count = 0
             
             for email in emails:
-                # Get associated proposal
-                proposals = services["proposal_repository"].find_all(
-                    filter_dict={"email_id": ObjectId(email.id)}
-                )
-                proposal = proposals[0] if proposals else None
-                
-                # Get associated sent email
-                sent_email = None
-                if proposal and proposal.sent_email_id:
-                    sent_emails = services["sent_email_repository"].find_all(
-                        filter_dict={"_id": proposal.sent_email_id}
-                    )
-                    sent_email = sent_emails[0] if sent_emails else None
-                
-                # Calculate time metrics
-                received_time = email.received_at
-                processing_time = proposal.created_at if proposal else None
-                sent_time = sent_email.sent_at if sent_email else None
-                
-                processing_duration = None
-                if received_time and processing_time:
-                    processing_duration = (processing_time - received_time).total_seconds() / 3600  # in hours
-                
-                total_duration = None
-                if received_time and sent_time:
-                    total_duration = (sent_time - received_time).total_seconds() / 3600  # in hours
-                
-                workflow_dict = {
-                    "Email ID": str(email.id),
-                    "Subject": email.subject,
-                    "Sender": email.sender,
-                    "Received": received_time.strftime("%Y-%m-%d %H:%M") if received_time else None,
-                    "Processed": "Yes" if email.processed else "No",
-                    "Proposal ID": str(proposal.id) if proposal else None,
-                    "Proposal Status": proposal.status if proposal else None,
-                    "Sent ID": str(sent_email.id) if sent_email else None,
-                    "Sent Time": sent_time.strftime("%Y-%m-%d %H:%M") if sent_time else None,
-                    "Processing Time (hrs)": round(processing_duration, 2) if processing_duration else None,
-                    "Total Time (hrs)": round(total_duration, 2) if total_duration else None
-                }
-                
-                workflow_data.append(workflow_dict)
+                try:
+                    # Get associated proposal
+                    proposals = None
+                    try:
+                        proposals = services["proposal_repository"].find_all(
+                            filter_dict={"email_id": ObjectId(str(email.id))}
+                        )
+                    except Exception as e:
+                        # Continue without logging debug info
+                        pass
+
+                    proposal = proposals[0] if proposals and len(proposals) > 0 else None
+                    
+                    # Get associated sent email
+                    sent_email = None
+                    if proposal and hasattr(proposal, 'sent_email_id') and proposal.sent_email_id:
+                        try:
+                            sent_emails = services["sent_email_repository"].find_all(
+                                filter_dict={"_id": ObjectId(str(proposal.sent_email_id))}
+                            )
+                            sent_email = sent_emails[0] if sent_emails and len(sent_emails) > 0 else None
+                        except Exception:
+                            # Continue without error
+                            pass
+                    
+                    # Calculate time metrics with safe defaults
+                    received_time = None
+                    if hasattr(email, 'received_at') and email.received_at:
+                        received_time = email.received_at
+                    
+                    processing_time = None  
+                    if proposal and hasattr(proposal, 'created_at') and proposal.created_at:
+                        processing_time = proposal.created_at
+                    
+                    sent_time = None
+                    if sent_email and hasattr(sent_email, 'sent_at') and sent_email.sent_at:
+                        sent_time = sent_email.sent_at
+                    
+                    processing_duration = None
+                    if received_time and processing_time:
+                        try:
+                            processing_duration = (processing_time - received_time).total_seconds() / 3600  # in hours
+                        except Exception:
+                            processing_duration = None
+                    
+                    total_duration = None
+                    if received_time and sent_time:
+                        try:
+                            total_duration = (sent_time - received_time).total_seconds() / 3600  # in hours
+                        except Exception:
+                            total_duration = None
+                    
+                    # Ensure all dictionary values have fallbacks
+                    email_id = str(email.id) if hasattr(email, 'id') else "Unknown"
+                    subject = email.subject if hasattr(email, 'subject') else "Unknown"
+                    sender = email.sender if hasattr(email, 'sender') else "Unknown"
+                    received_str = received_time.strftime("%Y-%m-%d %H:%M") if received_time else "Unknown"
+                    processed = "Yes" if hasattr(email, 'processed') and email.processed else "No"
+                    proposal_id = str(proposal.id) if proposal and hasattr(proposal, 'id') else None
+                    proposal_status = proposal.current_status if proposal and hasattr(proposal, 'current_status') else None
+                    sent_id = str(sent_email.id) if sent_email and hasattr(sent_email, 'id') else None
+                    sent_str = sent_time.strftime("%Y-%m-%d %H:%M") if sent_time else None
+                    
+                    # Build workflow entry with safe attribute access and stringified values
+                    workflow_dict = {
+                        "Email ID": email_id,
+                        "Subject": subject,
+                        "Sender": sender,
+                        "Received": received_str,
+                        "Processed": processed,
+                        "Proposal ID": proposal_id,
+                        "Proposal Status": proposal_status,
+                        "Sent ID": sent_id,
+                        "Sent Time": sent_str,
+                        "Processing Time (hrs)": round(processing_duration, 2) if processing_duration is not None else None,
+                        "Total Time (hrs)": round(total_duration, 2) if total_duration is not None else None
+                    }
+                    
+                    workflow_data.append(workflow_dict)
+                except Exception as item_e:
+                    # Skip this item and count errors
+                    error_count += 1
+                    continue
             
             # Display workflow data
-            st.subheader("Email to Proposal Workflow")
-            df = pd.DataFrame(workflow_data)
-            st.dataframe(df)
-            
-            # Statistics
-            st.subheader("Workflow Statistics")
-            
-            col1, col2, col3 = st.columns(3)
-            
-            with col1:
-                # Processing rate
-                processed_count = sum(1 for item in workflow_data if item["Processed"] == "Yes")
-                processing_rate = (processed_count / len(workflow_data)) * 100 if workflow_data else 0
-                st.metric("Email Processing Rate", f"{processing_rate:.1f}%")
-            
-            with col2:
-                # Average processing time
-                processing_times = [item["Processing Time (hrs)"] for item in workflow_data if item["Processing Time (hrs)"] is not None]
-                avg_processing_time = sum(processing_times) / len(processing_times) if processing_times else 0
-                st.metric("Avg. Processing Time", f"{avg_processing_time:.2f} hrs")
-            
-            with col3:
-                # Average total time
-                total_times = [item["Total Time (hrs)"] for item in workflow_data if item["Total Time (hrs)"] is not None]
-                avg_total_time = sum(total_times) / len(total_times) if total_times else 0
-                st.metric("Avg. Total Time", f"{avg_total_time:.2f} hrs")
-            
-            # Email to sent proposal conversion rate
-            sent_count = sum(1 for item in workflow_data if item["Sent ID"] is not None)
-            conversion_rate = (sent_count / len(workflow_data)) * 100 if workflow_data else 0
-            st.metric("Email to Sent Proposal Conversion Rate", f"{conversion_rate:.1f}%")
+            if workflow_data:
+                st.subheader("Email to Proposal Workflow")
+                
+                # Show error count if any
+                if error_count > 0:
+                    st.warning(f"{error_count} items were skipped due to errors")
+                
+                # Convert all None values to empty strings for display safety
+                safe_data = []
+                for item in workflow_data:
+                    safe_item = {k: (v if v is not None else "") for k, v in item.items()}
+                    safe_data.append(safe_item)
+                    
+                df = pd.DataFrame(safe_data)
+                st.dataframe(df)
+                
+                # Statistics
+                st.subheader("Workflow Statistics")
+                
+                col1, col2, col3 = st.columns(3)
+                
+                with col1:
+                    # Processing rate
+                    processed_count = sum(1 for item in workflow_data if item["Processed"] == "Yes")
+                    processing_rate = (processed_count / len(workflow_data)) * 100 if workflow_data else 0
+                    st.metric("Email Processing Rate", f"{processing_rate:.1f}%")
+                
+                with col2:
+                    # Average processing time - handle empty lists
+                    processing_times = [item["Processing Time (hrs)"] for item in workflow_data if item["Processing Time (hrs)"] is not None]
+                    avg_processing_time = sum(processing_times) / len(processing_times) if processing_times else 0
+                    st.metric("Avg. Processing Time", f"{avg_processing_time:.2f} hrs")
+                
+                with col3:
+                    # Average total time - handle empty lists
+                    total_times = [item["Total Time (hrs)"] for item in workflow_data if item["Total Time (hrs)"] is not None]
+                    avg_total_time = sum(total_times) / len(total_times) if total_times else 0
+                    st.metric("Avg. Total Time", f"{avg_total_time:.2f} hrs")
+                
+                # Email to sent proposal conversion rate
+                sent_count = sum(1 for item in workflow_data if item["Sent ID"] is not None and item["Sent ID"] != "")
+                conversion_rate = (sent_count / len(workflow_data)) * 100 if workflow_data else 0
+                st.metric("Email to Sent Proposal Conversion Rate", f"{conversion_rate:.1f}%")
+            else:
+                st.info("No workflow data available for analysis")
         else:
             st.info("No emails found for workflow analysis")
             
@@ -748,91 +922,215 @@ elif page == "Templates":
     st.header("Templates")
     
     try:
-        # Template filters
+        # Template filters with improved status options
+        status_options = ["All", "Active", "Inactive", "Pending"]
         status_filter = st.selectbox(
             "Filter by Status",
-            options=["All", "Active", "Inactive"],
+            options=status_options,
             index=0
         )
         
-        # Build filter
+        # Build filter with proper status mapping
         filter_dict = {}
         if status_filter != "All":
-            filter_dict["status"] = status_filter.lower()
+            status_map = {
+                "Active": "approved", 
+                "Inactive": "inactive",
+                "Pending": "pending"
+            }
+            filter_dict["status"] = status_map.get(status_filter, status_filter.lower())
         
         # Get templates from database
         templates = services["template_repository"].find_all(filter_dict=filter_dict, skip=0, limit=20)
         
-        if templates:
+        if templates and len(templates) > 0:
             # Convert to DataFrame for display
             template_data = []
+            error_count = 0
+            
             for template in templates:
-                template_dict = {
-                    "ID": str(template.id),
-                    "Name": template.name,
-                    "Status": template.status.capitalize(),
-                    "Created": template.created_at.strftime("%Y-%m-%d %H:%M")
-                }
-                template_data.append(template_dict)
+                try:
+                    # Safe extraction of template properties with explicit checks
+                    template_id = "Unknown"
+                    if hasattr(template, 'id') and template.id is not None:
+                        template_id = str(template.id)
+                    
+                    template_name = "Unnamed"
+                    if hasattr(template, 'name') and template.name is not None:
+                        template_name = str(template.name)
+                        
+                    template_status = "Unknown"
+                    if hasattr(template, 'status') and template.status is not None:
+                        template_status = str(template.status).capitalize()
+                        
+                    created_at_str = "Unknown"
+                    if hasattr(template, 'created_at') and template.created_at is not None:
+                        try:
+                            created_at_str = template.created_at.strftime("%Y-%m-%d %H:%M")
+                        except Exception:
+                            pass
+                    
+                    template_dict = {
+                        "ID": template_id,
+                        "Name": template_name,
+                        "Status": template_status,
+                        "Created": created_at_str
+                    }
+                    template_data.append(template_dict)
+                except Exception as e:
+                    error_count += 1
+                    continue
             
-            df = pd.DataFrame(template_data)
-            st.dataframe(df)
-            
-            # View template details
-            if template_data:
-                selected_template_id = st.selectbox(
-                    "Select template to view",
-                    options=[t["ID"] for t in template_data],
-                    format_func=lambda x: next(
-                        (f"{t['Name']} ({t['Status']})" for t in template_data if t["ID"] == x),
-                        x
-                    )
-                )
+            if template_data and len(template_data) > 0:
+                if error_count > 0:
+                    st.warning(f"{error_count} templates were skipped due to data errors")
+                    
+                # Create DataFrame with all string values to prevent JavaScript errors
+                df = pd.DataFrame(template_data)
+                st.dataframe(df)
                 
-                if selected_template_id:
-                    template = services["template_repository"].find_by_id(selected_template_id)
-                    if template:
-                        # Display template details
-                        st.subheader(f"Template: {template.name}")
-                        st.text(f"Status: {template.status.capitalize()}")
-                        st.text(f"Created: {template.created_at.strftime('%Y-%m-%d %H:%M')}")
+                # Create a simplified dictionary for the dropdown to avoid issues
+                template_options = []
+                template_display_names = {}
+                
+                for t in template_data:
+                    tid = t["ID"]
+                    if tid != "Unknown" and tid.strip() != "":
+                        template_options.append(tid)
+                        template_display_names[tid] = f"{t['Name']} ({t['Status']})"
+                
+                # View template details
+                if template_options and len(template_options) > 0:
+                    try:
+                        selected_template_id = st.selectbox(
+                            "Select template to view",
+                            options=template_options,
+                            format_func=lambda x: template_display_names.get(x, x) if template_display_names and x in template_display_names else x
+                        )
                         
-                        # Template content
-                        with st.expander("Template Content", expanded=True):
-                            st.write(template.content)
-                        
-                        # Approval and status
-                        col1, col2 = st.columns(2)
-                        
-                        with col1:
-                            # Approve button
-                            if template.status == "pending":
-                                if st.button("Approve Template"):
-                                    with st.spinner("Approving template..."):
+                        if selected_template_id and selected_template_id != "Unknown":
+                            try:
+                                template = services["template_repository"].find_by_id(selected_template_id)
+                                if template:
+                                    # Display template details with safe access
+                                    name = "Unnamed Template"
+                                    if hasattr(template, 'name') and template.name is not None:
+                                        name = str(template.name)
+                                        
+                                    status = "Unknown"
+                                    if hasattr(template, 'status') and template.status is not None:
+                                        status = str(template.status).capitalize()
+                                        
+                                    created_at = "Unknown date"
+                                    if hasattr(template, 'created_at') and template.created_at is not None:
                                         try:
-                                            success = services["template_repository"].approve_template(selected_template_id)
-                                            if success:
-                                                st.success("Template approved successfully!")
-                                                st.rerun()
+                                            created_at = template.created_at.strftime("%Y-%m-%d %H:%M")
+                                        except Exception:
+                                            pass
+                                    
+                                    st.subheader(f"Template: {name}")
+                                    st.text(f"Status: {status}")
+                                    st.text(f"Created: {created_at}")
+                                    
+                                    # Safely check for content existence
+                                    content = ""
+                                    has_content = False
+                                    if hasattr(template, 'content') and template.content is not None:
+                                        content = str(template.content)
+                                        has_content = content.strip() != ""
+                                    
+                                    # Template content
+                                    with st.expander("Template Content", expanded=True):
+                                        if has_content:
+                                            # Try to determine if it's HTML or markdown
+                                            if content.strip().startswith('<'):
+                                                st.markdown(content, unsafe_allow_html=True)
                                             else:
-                                                st.error("Failed to approve template")
-                                        except Exception as e:
-                                            st.error(f"Error approving template: {str(e)}")
-                        
-                        with col2:
-                            # Deactivate button
-                            if template.status == "approved":
-                                if st.button("Deactivate Template"):
-                                    with st.spinner("Deactivating template..."):
-                                        try:
-                                            success = services["template_repository"].deactivate_template(selected_template_id)
-                                            if success:
-                                                st.success("Template deactivated successfully!")
-                                                st.rerun()
-                                            else:
-                                                st.error("Failed to deactivate template")
-                                        except Exception as e:
-                                            st.error(f"Error deactivating template: {str(e)}")
+                                                st.write(content)
+                                        else:
+                                            st.info("No content available for this template")
+                                    
+                                    # Testing template preview
+                                    with st.expander("Template Preview", expanded=False):
+                                        st.info("This is how the template would look when applied to a proposal")
+                                        if has_content:
+                                            sample_data = {
+                                                "project_name": "Sample Project",
+                                                "client_name": "Sample Client",
+                                                "deadline": "2023-12-31",
+                                                "budget": "$5,000",
+                                                "features": ["Feature 1", "Feature 2", "Feature 3"]
+                                            }
+                                            
+                                            # Try to render with sample data (basic implementation)
+                                            try:
+                                                preview = content
+                                                for key, value in sample_data.items():
+                                                    if key and value is not None:
+                                                        placeholder = "{{" + key + "}}"
+                                                        replacement = ""
+                                                        if isinstance(value, list):
+                                                            replacement = "<ul>" + "".join([f"<li>{item}</li>" for item in value]) + "</ul>"
+                                                        else:
+                                                            replacement = str(value)
+                                                        preview = preview.replace(placeholder, replacement)
+                                                
+                                                st.markdown(preview, unsafe_allow_html=True)
+                                            except Exception as preview_e:
+                                                st.error(f"Error rendering preview: {str(preview_e)}")
+                                    
+                                    # Approval and status
+                                    col1, col2, col3 = st.columns(3)
+                                    
+                                    current_status = ""
+                                    if hasattr(template, 'status') and template.status is not None:
+                                        current_status = str(template.status).lower()
+                                    
+                                    with col1:
+                                        # Approve button - only show if status is actually pending
+                                        if current_status == "pending":
+                                            if st.button("Approve Template"):
+                                                with st.spinner("Approving template..."):
+                                                    try:
+                                                        success = services["template_repository"].approve_template(selected_template_id)
+                                                        if success:
+                                                            st.success("Template approved successfully!")
+                                                            st.rerun()
+                                                        else:
+                                                            st.error("Failed to approve template")
+                                                    except Exception as e:
+                                                        st.error(f"Error approving template: {str(e)}")
+                                    
+                                    with col2:
+                                        # Deactivate button - only show if status is approved
+                                        if current_status == "approved":
+                                            if st.button("Deactivate Template"):
+                                                with st.spinner("Deactivating template..."):
+                                                    try:
+                                                        success = services["template_repository"].deactivate_template(selected_template_id)
+                                                        if success:
+                                                            st.success("Template deactivated successfully!")
+                                                            st.rerun()
+                                                        else:
+                                                            st.error("Failed to deactivate template")
+                                                    except Exception as e:
+                                                        st.error(f"Error deactivating template: {str(e)}")
+                                    
+                                    with col3:
+                                        # Test apply button - only show for active templates
+                                        if current_status in ["approved", "active"]:
+                                            if st.button("Test Apply to Proposal"):
+                                                st.info("This functionality is not yet implemented")
+                                else:
+                                    st.error("Template not found. It may have been deleted.")
+                            except Exception as template_e:
+                                st.error(f"Error loading template details: {str(template_e)}")
+                    except Exception as select_e:
+                        st.error(f"Error with template selection: {str(select_e)}")
+                else:
+                    st.warning("No valid templates found to select")
+            else:
+                st.warning("Templates were found but could not be processed properly")
         else:
             st.info(f"No templates found with status: {status_filter}")
             

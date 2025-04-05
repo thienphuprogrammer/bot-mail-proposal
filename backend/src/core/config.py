@@ -21,7 +21,14 @@ class Settings:
     GMAIL_TOKEN_PATH: str = os.getenv("GMAIL_TOKEN_PATH", "credentials/token.json")
     GMAIL_SCOPES: list = ["https://www.googleapis.com/auth/gmail.readonly", 
                           "https://www.googleapis.com/auth/gmail.send"]
-    
+
+    # Outlook API
+    OUTLOOK_TENANT_ID: str = os.getenv("OUTLOOK_TENANT_ID", "")
+    OUTLOOK_CLIENT_ID: str = os.getenv("OUTLOOK_CLIENT_ID", "")
+    OUTLOOK_CLIENT_SECRET: str = os.getenv("OUTLOOK_CLIENT_SECRET", "")
+    OUTLOOK_USER_ID: str = os.getenv("OUTLOOK_USER_ID", "")
+    OUTLOOK_AUTHORIZATION_URL: str = os.getenv("OUTLOOK_AUTHORIZATION_URL", "https://login.microsoftonline.com/common/oauth2/v2.0/authorize")
+    OUTLOOK_AUTHORIZATION_KEY: str = os.getenv("OUTLOOK_AUTHORIZATION_KEY", "")
     # OpenAI API
     OPENAI_API_KEY: str = os.getenv("OPENAI_API_KEY", "")
     
@@ -30,6 +37,7 @@ class Settings:
     AZURE_OPENAI_ENDPOINT: str = os.getenv("AZURE_OPENAI_ENDPOINT", "")
     AZURE_OPENAI_DEPLOYMENT: str = os.getenv("AZURE_OPENAI_DEPLOYMENT", "")
     AZURE_OPENAI_API_VERSION: str = os.getenv("AZURE_OPENAI_API_VERSION", "2023-05-15")
+    OUTLOOK_TOKEN_PATH: str = os.getenv("OUTLOOK_TOKEN_PATH", "credentials/outlook_token.txt")
     
     # Use Azure instead of OpenAI
     USE_AZURE_AI: bool = os.getenv("USE_AZURE_AI", "False") == "True"

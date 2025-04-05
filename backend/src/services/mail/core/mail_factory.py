@@ -7,7 +7,9 @@ from typing import Dict, Any, Optional, Type
 from services.mail.core.interfaces import BaseMailService, MailProcessor, MailFilter
 from services.mail.core.mail_facade import MailServiceFacade
 from services.mail.providers.gmail_service import GmailService
+from services.mail.providers.outlook_service import OutlookService
 from services.mail.processors.gmail_processor import GmailMailProcessor
+from services.mail.processors.outlook_processor import OutlookMailProcessor
 from services.mail.filters.mail_filter import MailFilterService
 from repositories.email_repository import EmailRepository
 
@@ -20,9 +22,19 @@ class MailServiceFactory:
         return GmailService()
     
     @staticmethod
-    def create_mail_processor(mail_service: BaseMailService) -> GmailMailProcessor:
+    def create_outlook_service() -> OutlookService:
+        """Create and configure an Outlook service."""
+        return OutlookService()
+    
+    @staticmethod
+    def create_mail_processor(mail_service: BaseMailService) -> MailProcessor:
         """Create and configure a mail processor."""
-        return GmailMailProcessor(mail_service)
+        if isinstance(mail_service, GmailService):
+            return GmailMailProcessor(mail_service)
+        elif isinstance(mail_service, OutlookService):
+            return OutlookMailProcessor(mail_service)
+        else:
+            raise ValueError(f"Unsupported mail service type: {type(mail_service)}")
     
     @staticmethod
     def create_mail_filter() -> MailFilterService:
@@ -39,16 +51,30 @@ class MailServiceFactory:
         mail_service: Optional[BaseMailService] = None,
         mail_processor: Optional[MailProcessor] = None,
         mail_filter: Optional[MailFilter] = None,
-        email_repository: Optional[EmailRepository] = None
+        email_repository: Optional[EmailRepository] = None,
+        provider: str = "gmail"
     ) -> MailServiceFacade:
         """
         Create a complete mail service facade with all dependencies.
         
-        If any component is not provided, it will be created automatically.
+        Args:
+            mail_service: Optional mail service instance
+            mail_processor: Optional mail processor instance
+            mail_filter: Optional mail filter instance
+            email_repository: Optional email repository instance
+            provider: Email provider to use ("gmail" or "outlook")
+            
+        Returns:
+            MailServiceFacade instance with all dependencies configured
         """
         # Create components if not provided
         if mail_service is None:
-            mail_service = MailServiceFactory.create_gmail_service()
+            if provider.lower() == "gmail":
+                mail_service = MailServiceFactory.create_gmail_service()
+            elif provider.lower() == "outlook":
+                mail_service = MailServiceFactory.create_outlook_service()
+            else:
+                raise ValueError(f"Unsupported email provider: {provider}")
             
         if mail_processor is None:
             mail_processor = MailServiceFactory.create_mail_processor(mail_service)
@@ -70,4 +96,9 @@ class MailServiceFactory:
     @staticmethod
     def create_default_gmail_facade() -> MailServiceFacade:
         """Create a default Gmail-based mail service facade."""
-        return MailServiceFactory.create_mail_facade() 
+        return MailServiceFactory.create_mail_facade(provider="gmail")
+    
+    @staticmethod
+    def create_default_outlook_facade() -> MailServiceFacade:
+        """Create a default Outlook-based mail service facade."""
+        return MailServiceFactory.create_mail_facade(provider="outlook") 

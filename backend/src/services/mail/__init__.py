@@ -8,7 +8,7 @@ of concerns with dependency injection for better testability.
 
 Directory Structure:
 - core/: Core interfaces and service orchestration
-- providers/: Email provider implementations (Gmail, etc.)
+- providers/: Email provider implementations (Gmail, Outlook, etc.)
 - processors/: Email content extraction and processing
 - filters/: Email categorization and filtering
 
@@ -34,10 +34,10 @@ from services.mail.core import (
 )
 
 # Export provider implementations
-from services.mail.providers import GmailService
+from services.mail.providers import GmailService, OutlookService
 
 # Export processor implementations
-from services.mail.processors import GmailMailProcessor
+from services.mail.processors import GmailMailProcessor, OutlookMailProcessor
 
 # Export filter implementations
 from services.mail.filters import MailFilterService
@@ -52,9 +52,11 @@ __all__ = [
     
     # Providers
     "GmailService",
+    "OutlookService",
     
     # Processors
     "GmailMailProcessor",
+    "OutlookMailProcessor",
     
     # Filters
     "MailFilterService"
