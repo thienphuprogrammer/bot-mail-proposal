@@ -86,7 +86,7 @@ def initialize_services():
 
 if __name__ == "__main__":
     services = initialize_services()
-    proposal_id = "67ef458e9714ba886a87e315"
+    proposal_id = "67ef635671a6606a0a0f591c"
 
     pdf = services["proposal_service"].generate_pdf(proposal_id)
 

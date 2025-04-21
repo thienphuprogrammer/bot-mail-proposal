@@ -5,15 +5,49 @@ PDF rendering for proposals.
 import os
 import logging
 import tempfile
-from typing import Optional
+from typing import Optional, Dict, Any
 from datetime import datetime
 import markdown
+import re
+from pathlib import Path
+
 from services.proposal.core.interfaces import ProposalRenderer
 from repositories.base_repository import BaseRepository
-import re
+from core.company_info import COMPANY_INFO
 
+# Configure logging
 logger = logging.getLogger(__name__)
 
+# Constants
+DEFAULT_PDF_OPTIONS = {
+    'page-size': 'A4',
+    'margin-top': '25mm',
+    'margin-right': '20mm',
+    'margin-bottom': '25mm',
+    'margin-left': '20mm',
+    'encoding': 'UTF-8',
+    'no-outline': None,
+    'enable-local-file-access': None,
+    'footer-right': '[page] of [topage]',
+    'footer-font-size': '9',
+    'footer-line': True,
+    'header-right': '[date]',
+    'header-font-size': '9',
+    'print-media-type': None,
+    'dpi': 300,
+    'image-quality': 100,
+    'zoom': 1.0
+}
+
+# Markdown extension configuration
+MARKDOWN_EXTENSIONS = [
+    'tables', 'fenced_code', 'nl2br', 'codehilite', 
+    'sane_lists', 'smarty', 'toc'
+]
+MARKDOWN_EXTENSION_CONFIGS = {
+    'codehilite': {'linenums': False, 'use_pygments': True, 'css_class': 'highlight'}, 
+    'toc': {'permalink': False}
+}
 
 class PDFProposalRenderer(ProposalRenderer):
     """Renders proposals as PDF documents using wkhtmltopdf."""
@@ -27,26 +61,16 @@ class PDFProposalRenderer(ProposalRenderer):
         """
         self.proposal_repository = proposal_repository
         self.wkhtmltopdf_path = "D:/wkhtmltopdf/bin/wkhtmltopdf.exe"
-        self.pdf_options = {
-            'page-size': 'A4',
-            'margin-top': '25mm',
-            'margin-right': '20mm',
-            'margin-bottom': '25mm',
-            'margin-left': '20mm',
-            'encoding': 'UTF-8',
-            'no-outline': None,
-            'enable-local-file-access': None,
-            'footer-right': '[page] of [topage]',
-            'footer-font-size': '9',
-            'footer-line': True,
-            'header-right': '[date]',
-            'header-font-size': '9',
-            'print-media-type': None,
-            'dpi': 300,
-            'image-quality': 100,
-            'zoom': 1.0
-        }
-        os.makedirs("temp/proposals", exist_ok=True)
+        self.pdf_options = DEFAULT_PDF_OPTIONS
+        
+        # Create output directories
+        self.output_dir = Path("temp/proposals")
+        os.makedirs(self.output_dir, exist_ok=True)
+        
+        # Path to logo file
+        self.logo_path = os.path.abspath(os.path.join(
+            os.path.dirname(__file__), "../../../../logos/logo.jpg")
+        )
 
     def _get_proposal_content(self, proposal_id: str) -> Optional[str]:
         """
@@ -62,6 +86,7 @@ class PDFProposalRenderer(ProposalRenderer):
         if not proposal or not proposal.proposal_versions:
             logger.error(f"Proposal not found or has no versions: {proposal_id}")
             return None
+            
         latest_version = max(proposal.proposal_versions, key=lambda v: v.version)
         return latest_version.content
 
@@ -77,6 +102,45 @@ class PDFProposalRenderer(ProposalRenderer):
         """
         pattern = r'<think>.*?</think>'
         return re.sub(pattern, '', content, flags=re.DOTALL)
+
+    def _get_company_info_html(self) -> str:
+        """
+        Get the HTML for the company information header.
+
+        Returns:
+            HTML string with the company info header
+        """
+        # Get company information
+        company_name = COMPANY_INFO.get("name", "")
+        company_address = COMPANY_INFO.get("address", "")
+        company_phone = COMPANY_INFO.get("phone", "")
+        company_email = COMPANY_INFO.get("email", "")
+        
+        # Create web order number format MMDDYYHH
+        order_number = f"{datetime.now().strftime('%m%d')}{datetime.now().year % 100}{datetime.now().strftime('%H')}"
+        
+        return f"""
+        <div class="company-header">
+            <div class="logo-container">
+                <img src="{self.logo_path}" alt="Company Logo" class="company-logo">
+            </div>
+            <div class="company-info">
+                <div class="company-name">{company_name}</div>
+                <div class="company-address">{company_address}</div>
+                <div class="company-contact">
+                    <span>Phone: </span><span>{company_phone}</span>
+                </div>
+                <div class="company-email">
+                    <span>Email: </span><span>{company_email}</span>
+                </div>
+            </div>
+            <div class="order-number">
+                <div class="order-label">WEB ORDER NO</div>
+                <div class="order-value">{order_number}</div>
+            </div>
+        </div>
+        <div style="clear: both; margin-bottom: 20px;"></div>
+        """
 
     def _get_css(self) -> str:
         """
@@ -121,8 +185,42 @@ class PDFProposalRenderer(ProposalRenderer):
             .toc ul { padding-left: 20pt; }
             .toc li { margin-bottom: 5pt; }
             .toc a { text-decoration: none; color: #2E74B5; }
+            
+            /* Company Header Styles */
+            .company-header { width: 100%; overflow: hidden; margin-bottom: 20px; padding-bottom: 10px; border-bottom: 1px solid #ccc; }
+            .logo-container { float: left; width: 120px; }
+            .company-logo { max-width: 100%; height: auto; }
+            .company-info { float: left; margin-left: 20px; font-size: 10pt; }
+            .company-name { font-weight: bold; font-size: 12pt; color: #333; margin-bottom: 5px; }
+            .company-address { margin-bottom: 3px; }
+            .company-contact { margin-bottom: 3px; }
+            .company-email { margin-bottom: 3px; }
+            .order-number { float: right; margin-top: 15px; text-align: left; }
+            .order-label { font-weight: bold; margin-bottom: 5px; color: #333; }
+            .order-value { font-size: 11pt; }
         </style>
         """
+
+    def _normalize_markdown_tables(self, content: str) -> str:
+        """
+        Ensure tables have proper formatting by normalizing table syntax.
+        
+        Args:
+            content: Markdown content to normalize
+            
+        Returns:
+            Normalized markdown content
+        """
+        table_pattern = r'(\n\s*\|[^\n]+\|\s*\n\s*\|[\-\|]+\|\s*\n)'
+        
+        def fix_table(match):
+            table_header = match.group(0)
+            # Ensure there's a blank line before the table
+            if not table_header.startswith('\n\n'):
+                table_header = '\n\n' + table_header
+            return table_header
+            
+        return re.sub(table_pattern, fix_table, content)
 
     def _convert_to_styled_html(self, content: str) -> str:
         """
@@ -134,27 +232,25 @@ class PDFProposalRenderer(ProposalRenderer):
         Returns:
             HTML with styling
         """
-        cleaned_content = self._remove_think_tags(content)
-        
-        # Ensure tables have proper formatting by normalizing table syntax
-        # Fix issue with tables not rendering properly
-        table_pattern = r'(\n\s*\|[^\n]+\|\s*\n\s*\|[\-\|]+\|\s*\n)'
-        
-        def fix_table(match):
-            table_header = match.group(0)
-            # Ensure there's a blank line before the table
-            if not table_header.startswith('\n\n'):
-                table_header = '\n\n' + table_header
-            return table_header
+        if not content:
+            logger.warning("No content provided for HTML conversion")
+            return "<html><body><p>No content available</p></body></html>"
             
-        cleaned_content = re.sub(table_pattern, fix_table, cleaned_content)
+        # Clean and normalize content
+        cleaned_content = self._remove_think_tags(content)
+        normalized_content = self._normalize_markdown_tables(cleaned_content)
         
+        # Convert markdown to HTML
         html_content = markdown.markdown(
-            cleaned_content,
-            extensions=['tables', 'fenced_code', 'nl2br', 'codehilite', 'sane_lists', 'smarty', 'toc'],
-            extension_configs={'codehilite': {'linenums': False, 'use_pygments': True, 'css_class': 'highlight'}, 'toc': {'permalink': False}}
+            normalized_content,
+            extensions=MARKDOWN_EXTENSIONS,
+            extension_configs=MARKDOWN_EXTENSION_CONFIGS
         )
+        
+        # Assemble full HTML document
         css = self._get_css()
+        company_info_html = self._get_company_info_html()
+        
         return f"""
         <!DOCTYPE html>
         <html>
@@ -164,7 +260,7 @@ class PDFProposalRenderer(ProposalRenderer):
             {css}
         </head>
         <body>
-            <div class="header">{datetime.now().strftime("%Y-%m-%d")}</div>
+            {company_info_html}
             {html_content}
             <div class="footer"><span>Page </span><span class="pageNumber"></span><span> of </span><span class="totalPages"></span></div>
         </body>
@@ -192,6 +288,45 @@ class PDFProposalRenderer(ProposalRenderer):
             logger.error(f"Error saving HTML fallback: {str(e)}")
             return False
 
+    def _generate_pdf_with_pdfkit(self, temp_html_path: str, output_path: str) -> bool:
+        """
+        Generate PDF using pdfkit and wkhtmltopdf.
+        
+        Args:
+            temp_html_path: Path to the temporary HTML file
+            output_path: Path where to save the PDF file
+            
+        Returns:
+            True if successful, False otherwise
+        """
+        try:
+            import pdfkit
+            
+            # Configure wkhtmltopdf path if specified
+            config = None
+            if self.wkhtmltopdf_path:
+                config = pdfkit.configuration(wkhtmltopdf=self.wkhtmltopdf_path)
+                
+            # Generate PDF
+            pdfkit.from_file(temp_html_path, output_path, options=self.pdf_options, configuration=config)
+            
+            # Verify PDF was created
+            if os.path.exists(output_path):
+                logger.info(f"PDF generated successfully: {output_path}")
+                return True
+                
+            logger.error(f"PDF file not created at expected path: {output_path}")
+            return False
+            
+        except ImportError:
+            logger.error("pdfkit not installed. Install with: pip install pdfkit")
+            return False
+        except Exception as e:
+            logger.error(f"Error using pdfkit: {str(e)}")
+            if "No wkhtmltopdf executable found" in str(e):
+                logger.error("Please install wkhtmltopdf: https://wkhtmltopdf.org/downloads.html")
+            return False
+
     def generate_pdf(self, content: str, output_path: str = None) -> Optional[str]:
         """
         Generate a PDF from content (markdown or text).
@@ -203,43 +338,62 @@ class PDFProposalRenderer(ProposalRenderer):
         Returns:
             Path to the generated PDF file or None if failed
         """
+        if not content:
+            logger.error("No content provided for PDF generation")
+            return None
+            
         try:
+            # Create output path if not provided
             if not output_path:
                 timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-                output_path = os.path.join("temp/proposals", f"proposal_{timestamp}.pdf")
+                output_path = os.path.join(self.output_dir, f"proposal_{timestamp}.pdf")
+            
+            # Create directory if it doesn't exist
             os.makedirs(os.path.dirname(output_path), exist_ok=True)
 
+            # Convert to HTML
             html_content = self._convert_to_styled_html(content)
+            
+            # Create temporary HTML file
             with tempfile.NamedTemporaryFile(suffix=".html", delete=False, mode='w', encoding='utf-8') as temp_html:
                 temp_html.write(html_content)
                 temp_html_path = temp_html.name
 
             try:
-                import pdfkit
-                config = pdfkit.configuration(wkhtmltopdf=self.wkhtmltopdf_path) if self.wkhtmltopdf_path else None
-                pdfkit.from_file(temp_html_path, output_path, options=self.pdf_options, configuration=config)
-                if os.path.exists(output_path):
-                    logger.info(f"PDF generated successfully: {output_path}")
-                    return output_path
-                logger.error(f"PDF generation failed: {output_path}")
-                self._save_html_to_file(html_content, output_path)
-                return None
-            except ImportError:
-                logger.error("pdfkit not installed. Install with: pip install pdfkit")
-                self._save_html_to_file(html_content, output_path)
-                return None
-            except Exception as e:
-                logger.error(f"Error using pdfkit: {str(e)}")
-                self._save_html_to_file(html_content, output_path)
-                return None
+                # Generate PDF using pdfkit
+                success = self._generate_pdf_with_pdfkit(temp_html_path, output_path)
+                
+                # If PDF generation failed, save HTML as fallback
+                if not success:
+                    self._save_html_to_file(html_content, output_path)
+                    return None
+                    
+                return output_path
+                
             finally:
+                # Clean up temporary HTML file
                 if os.path.exists(temp_html_path):
                     os.unlink(temp_html_path)
+                    
         except Exception as e:
             logger.error(f"Error generating PDF: {str(e)}")
-            if "No wkhtmltopdf executable found" in str(e):
-                logger.error("Please install wkhtmltopdf: https://wkhtmltopdf.org/downloads.html")
             return None
+
+    def _get_safe_filename(self, proposal) -> str:
+        """
+        Get a safe filename for the proposal.
+        
+        Args:
+            proposal: Proposal object
+            
+        Returns:
+            Safe filename string
+        """
+        if hasattr(proposal, 'extracted_data') and hasattr(proposal.extracted_data, 'project_name'):
+            project_name = proposal.extracted_data.project_name
+            return "".join(c if c.isalnum() else "_" for c in project_name)
+        else:
+            return f"proposal_{proposal.id if hasattr(proposal, 'id') else 'unknown'}"
 
     def render_html(self, proposal_id: str) -> str:
         """
@@ -265,29 +419,34 @@ class PDFProposalRenderer(ProposalRenderer):
             Path to the generated PDF or None if failed
         """
         try:
+            # Get proposal content
             content = self._get_proposal_content(proposal_id)
             if not content:
                 logger.error(f"Could not get content for proposal: {proposal_id}")
                 return None
+                
+            # Get proposal object
             proposal = self.proposal_repository.find_by_id(proposal_id)
             if not proposal:
                 logger.error(f"Proposal not found: {proposal_id}")
                 return None
 
+            # Generate output path
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            safe_title = (
-                "".join(c if c.isalnum() else "_" for c in proposal.extracted_data.project_name)
-                if hasattr(proposal, 'extracted_data') and hasattr(proposal.extracted_data, 'project_name')
-                else f"proposal_{proposal_id}"
-            )
-            output_path = os.path.join("temp/proposals", f"{safe_title}_{timestamp}.pdf")
+            safe_title = self._get_safe_filename(proposal)
+            output_path = os.path.join(self.output_dir, f"{safe_title}_{timestamp}.pdf")
+            
+            # Generate PDF
             pdf_path = self.generate_pdf(content, output_path)
 
+            # Update proposal with PDF path
             if pdf_path and hasattr(proposal, 'proposal_versions') and proposal.proposal_versions:
                 latest_version_index = len(proposal.proposal_versions) - 1
                 update_data = {f"proposal_versions.{latest_version_index}.pdf_path": pdf_path}
                 self.proposal_repository.update(proposal_id, update_data)
+                
             return pdf_path
+            
         except Exception as e:
             logger.error(f"Error generating PDF from proposal: {str(e)}")
             return None
