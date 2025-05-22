@@ -6,9 +6,9 @@ import logging
 from typing import Optional, Dict, Any, List
 from datetime import datetime
 
-from services.authentication.core.interfaces import AuthenticationService, TokenService, PasswordService
-from repositories.user_repository import UserRepository
-from models.user import User, UserCreate
+from src.services.authentication.core.interfaces import AuthenticationService, TokenService, PasswordService
+from src.repositories.user_repository import UserRepository
+from src.models.user import User, UserCreate
 
 logger = logging.getLogger(__name__)
 

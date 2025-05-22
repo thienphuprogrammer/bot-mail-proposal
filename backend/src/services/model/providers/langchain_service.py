@@ -7,9 +7,9 @@ import json
 import logging
 from typing import Dict, Any, Optional, List, Union
 
-from services.model.core.interfaces import AIService
-from models.proposal import ExtractedData
-from core.config import settings
+from src.services.model.core.interfaces import AIService
+from src.models.proposal import ExtractedData
+from src.core.config import settings
 
 logger = logging.getLogger(__name__)
 

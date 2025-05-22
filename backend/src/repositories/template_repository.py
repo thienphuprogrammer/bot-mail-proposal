@@ -1,8 +1,8 @@
 from typing import Dict, Any, List, Optional
 from bson import ObjectId
 
-from database.mongodb import MongoDB
-from repositories.base_repository import MongoRepository
+from src.database.mongodb import MongoDB
+from src.repositories.base_repository import MongoRepository
 
 class TemplateRepository(MongoRepository):
     """Repository for template operations."""

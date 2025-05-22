@@ -7,26 +7,26 @@ from bson import ObjectId
 import pandas as pd
 
 # Initialize MongoDB connection
-from database.mongodb import init_db
-from repositories.email_repository import EmailRepository
-from repositories.proposal_repository import ProposalRepository
-from repositories.sent_email_repository import SentEmailRepository
-from repositories.user_repository import UserRepository
-from repositories.template_repository import TemplateRepository
+from src.database.mongodb import init_db
+from src.repositories.email_repository import EmailRepository
+from src.repositories.proposal_repository import ProposalRepository
+from src.repositories.sent_email_repository import SentEmailRepository
+from src.repositories.user_repository import UserRepository
+from src.repositories.template_repository import TemplateRepository
 
 # Import models
-from models.email import Email, SentEmail
-from models.proposal import Proposal, ProposalStatus, ApprovalDecision
-from models.user import User, UserCreate
+from src.models.email import Email, SentEmail
+from src.models.proposal import Proposal, ProposalStatus, ApprovalDecision
+from src.models.user import User, UserCreate
 
 # Import services
-from services.authentication import create_auth_service
-from services.model import create_model_service
-from services.mail.core.mail_factory import MailServiceFactory
-from services.proposal.core.proposal_factory import ProposalServiceFactory
-from services.template.template_service import TemplateService
+from src.services.authentication import create_auth_service
+from src.services.model import create_model_service
+from src.services.mail.core.mail_factory import MailServiceFactory
+from src.services.proposal.core.proposal_factory import ProposalServiceFactory
+from src.services.template.template_service import TemplateService
 
-from core.config import settings
+from src.core.config import settings
 
 # Custom JSON encoder for MongoDB ObjectId and datetime
 class CustomJSONEncoder(json.JSONEncoder):
@@ -168,7 +168,7 @@ else:
         st.rerun()
     
     # Show navigation options
-    page = st.sidebar.radio("Go to", ["Dashboard", "Emails", "Proposals", "Sent Proposals", "Workflow Analysis", "Templates"])
+    page = st.sidebar.radio("Go to", ["Dashboard", "Emails", "Proposals", "Sent Proposals", "Workflow Analysis"])
 
 # Login page
 if page == "Login":
@@ -917,225 +917,225 @@ elif page == "Workflow Analysis":
     except Exception as e:
         st.error(f"Error loading workflow analysis: {str(e)}")
 
-# Templates page
-elif page == "Templates":
-    st.header("Templates")
+# # Templates page
+# elif page == "Templates":
+#     st.header("Templates")
     
-    try:
-        # Template filters with improved status options
-        status_options = ["All", "Active", "Inactive", "Pending"]
-        status_filter = st.selectbox(
-            "Filter by Status",
-            options=status_options,
-            index=0
-        )
+#     try:
+#         # Template filters with improved status options
+#         status_options = ["All", "Active", "Inactive", "Pending"]
+#         status_filter = st.selectbox(
+#             "Filter by Status",
+#             options=status_options,
+#             index=0
+#         )
         
-        # Build filter with proper status mapping
-        filter_dict = {}
-        if status_filter != "All":
-            status_map = {
-                "Active": "approved", 
-                "Inactive": "inactive",
-                "Pending": "pending"
-            }
-            filter_dict["status"] = status_map.get(status_filter, status_filter.lower())
+#         # Build filter with proper status mapping
+#         filter_dict = {}
+#         if status_filter != "All":
+#             status_map = {
+#                 "Active": "approved", 
+#                 "Inactive": "inactive",
+#                 "Pending": "pending"
+#             }
+#             filter_dict["status"] = status_map.get(status_filter, status_filter.lower())
         
-        # Get templates from database
-        templates = services["template_repository"].find_all(filter_dict=filter_dict, skip=0, limit=20)
+#         # Get templates from database
+#         templates = services["template_repository"].find_all(filter_dict=filter_dict, skip=0, limit=20)
         
-        if templates and len(templates) > 0:
-            # Convert to DataFrame for display
-            template_data = []
-            error_count = 0
+#         if templates and len(templates) > 0:
+#             # Convert to DataFrame for display
+#             template_data = []
+#             error_count = 0
             
-            for template in templates:
-                try:
-                    # Safe extraction of template properties with explicit checks
-                    template_id = "Unknown"
-                    if hasattr(template, 'id') and template.id is not None:
-                        template_id = str(template.id)
+#             for template in templates:
+#                 try:
+#                     # Safe extraction of template properties with explicit checks
+#                     template_id = "Unknown"
+#                     if hasattr(template, 'id') and template.id is not None:
+#                         template_id = str(template.id)
                     
-                    template_name = "Unnamed"
-                    if hasattr(template, 'name') and template.name is not None:
-                        template_name = str(template.name)
+#                     template_name = "Unnamed"
+#                     if hasattr(template, 'name') and template.name is not None:
+#                         template_name = str(template.name)
                         
-                    template_status = "Unknown"
-                    if hasattr(template, 'status') and template.status is not None:
-                        template_status = str(template.status).capitalize()
+#                     template_status = "Unknown"
+#                     if hasattr(template, 'status') and template.status is not None:
+#                         template_status = str(template.status).capitalize()
                         
-                    created_at_str = "Unknown"
-                    if hasattr(template, 'created_at') and template.created_at is not None:
-                        try:
-                            created_at_str = template.created_at.strftime("%Y-%m-%d %H:%M")
-                        except Exception:
-                            pass
+#                     created_at_str = "Unknown"
+#                     if hasattr(template, 'created_at') and template.created_at is not None:
+#                         try:
+#                             created_at_str = template.created_at.strftime("%Y-%m-%d %H:%M")
+#                         except Exception:
+#                             pass
                     
-                    template_dict = {
-                        "ID": template_id,
-                        "Name": template_name,
-                        "Status": template_status,
-                        "Created": created_at_str
-                    }
-                    template_data.append(template_dict)
-                except Exception as e:
-                    error_count += 1
-                    continue
+#                     template_dict = {
+#                         "ID": template_id,
+#                         "Name": template_name,
+#                         "Status": template_status,
+#                         "Created": created_at_str
+#                     }
+#                     template_data.append(template_dict)
+#                 except Exception as e:
+#                     error_count += 1
+#                     continue
             
-            if template_data and len(template_data) > 0:
-                if error_count > 0:
-                    st.warning(f"{error_count} templates were skipped due to data errors")
+#             if template_data and len(template_data) > 0:
+#                 if error_count > 0:
+#                     st.warning(f"{error_count} templates were skipped due to data errors")
                     
-                # Create DataFrame with all string values to prevent JavaScript errors
-                df = pd.DataFrame(template_data)
-                st.dataframe(df)
+#                 # Create DataFrame with all string values to prevent JavaScript errors
+#                 df = pd.DataFrame(template_data)
+#                 st.dataframe(df)
                 
-                # Create a simplified dictionary for the dropdown to avoid issues
-                template_options = []
-                template_display_names = {}
+#                 # Create a simplified dictionary for the dropdown to avoid issues
+#                 template_options = []
+#                 template_display_names = {}
                 
-                for t in template_data:
-                    tid = t["ID"]
-                    if tid != "Unknown" and tid.strip() != "":
-                        template_options.append(tid)
-                        template_display_names[tid] = f"{t['Name']} ({t['Status']})"
+#                 for t in template_data:
+#                     tid = t["ID"]
+#                     if tid != "Unknown" and tid.strip() != "":
+#                         template_options.append(tid)
+#                         template_display_names[tid] = f"{t['Name']} ({t['Status']})"
                 
-                # View template details
-                if template_options and len(template_options) > 0:
-                    try:
-                        selected_template_id = st.selectbox(
-                            "Select template to view",
-                            options=template_options,
-                            format_func=lambda x: template_display_names.get(x, x) if template_display_names and x in template_display_names else x
-                        )
+#                 # View template details
+#                 if template_options and len(template_options) > 0:
+#                     try:
+#                         selected_template_id = st.selectbox(
+#                             "Select template to view",
+#                             options=template_options,
+#                             format_func=lambda x: template_display_names.get(x, x) if template_display_names and x in template_display_names else x
+#                         )
                         
-                        if selected_template_id and selected_template_id != "Unknown":
-                            try:
-                                template = services["template_repository"].find_by_id(selected_template_id)
-                                if template:
-                                    # Display template details with safe access
-                                    name = "Unnamed Template"
-                                    if hasattr(template, 'name') and template.name is not None:
-                                        name = str(template.name)
+#                         if selected_template_id and selected_template_id != "Unknown":
+#                             try:
+#                                 template = services["template_repository"].find_by_id(selected_template_id)
+#                                 if template:
+#                                     # Display template details with safe access
+#                                     name = "Unnamed Template"
+#                                     if hasattr(template, 'name') and template.name is not None:
+#                                         name = str(template.name)
                                         
-                                    status = "Unknown"
-                                    if hasattr(template, 'status') and template.status is not None:
-                                        status = str(template.status).capitalize()
+#                                     status = "Unknown"
+#                                     if hasattr(template, 'status') and template.status is not None:
+#                                         status = str(template.status).capitalize()
                                         
-                                    created_at = "Unknown date"
-                                    if hasattr(template, 'created_at') and template.created_at is not None:
-                                        try:
-                                            created_at = template.created_at.strftime("%Y-%m-%d %H:%M")
-                                        except Exception:
-                                            pass
+#                                     created_at = "Unknown date"
+#                                     if hasattr(template, 'created_at') and template.created_at is not None:
+#                                         try:
+#                                             created_at = template.created_at.strftime("%Y-%m-%d %H:%M")
+#                                         except Exception:
+#                                             pass
                                     
-                                    st.subheader(f"Template: {name}")
-                                    st.text(f"Status: {status}")
-                                    st.text(f"Created: {created_at}")
+#                                     st.subheader(f"Template: {name}")
+#                                     st.text(f"Status: {status}")
+#                                     st.text(f"Created: {created_at}")
                                     
-                                    # Safely check for content existence
-                                    content = ""
-                                    has_content = False
-                                    if hasattr(template, 'content') and template.content is not None:
-                                        content = str(template.content)
-                                        has_content = content.strip() != ""
+#                                     # Safely check for content existence
+#                                     content = ""
+#                                     has_content = False
+#                                     if hasattr(template, 'content') and template.content is not None:
+#                                         content = str(template.content)
+#                                         has_content = content.strip() != ""
                                     
-                                    # Template content
-                                    with st.expander("Template Content", expanded=True):
-                                        if has_content:
-                                            # Try to determine if it's HTML or markdown
-                                            if content.strip().startswith('<'):
-                                                st.markdown(content, unsafe_allow_html=True)
-                                            else:
-                                                st.write(content)
-                                        else:
-                                            st.info("No content available for this template")
+#                                     # Template content
+#                                     with st.expander("Template Content", expanded=True):
+#                                         if has_content:
+#                                             # Try to determine if it's HTML or markdown
+#                                             if content.strip().startswith('<'):
+#                                                 st.markdown(content, unsafe_allow_html=True)
+#                                             else:
+#                                                 st.write(content)
+#                                         else:
+#                                             st.info("No content available for this template")
                                     
-                                    # Testing template preview
-                                    with st.expander("Template Preview", expanded=False):
-                                        st.info("This is how the template would look when applied to a proposal")
-                                        if has_content:
-                                            sample_data = {
-                                                "project_name": "Sample Project",
-                                                "client_name": "Sample Client",
-                                                "deadline": "2023-12-31",
-                                                "budget": "$5,000",
-                                                "features": ["Feature 1", "Feature 2", "Feature 3"]
-                                            }
+#                                     # Testing template preview
+#                                     with st.expander("Template Preview", expanded=False):
+#                                         st.info("This is how the template would look when applied to a proposal")
+#                                         if has_content:
+#                                             sample_data = {
+#                                                 "project_name": "Sample Project",
+#                                                 "client_name": "Sample Client",
+#                                                 "deadline": "2023-12-31",
+#                                                 "budget": "$5,000",
+#                                                 "features": ["Feature 1", "Feature 2", "Feature 3"]
+#                                             }
                                             
-                                            # Try to render with sample data (basic implementation)
-                                            try:
-                                                preview = content
-                                                for key, value in sample_data.items():
-                                                    if key and value is not None:
-                                                        placeholder = "{{" + key + "}}"
-                                                        replacement = ""
-                                                        if isinstance(value, list):
-                                                            replacement = "<ul>" + "".join([f"<li>{item}</li>" for item in value]) + "</ul>"
-                                                        else:
-                                                            replacement = str(value)
-                                                        preview = preview.replace(placeholder, replacement)
+#                                             # Try to render with sample data (basic implementation)
+#                                             try:
+#                                                 preview = content
+#                                                 for key, value in sample_data.items():
+#                                                     if key and value is not None:
+#                                                         placeholder = "{{" + key + "}}"
+#                                                         replacement = ""
+#                                                         if isinstance(value, list):
+#                                                             replacement = "<ul>" + "".join([f"<li>{item}</li>" for item in value]) + "</ul>"
+#                                                         else:
+#                                                             replacement = str(value)
+#                                                         preview = preview.replace(placeholder, replacement)
                                                 
-                                                st.markdown(preview, unsafe_allow_html=True)
-                                            except Exception as preview_e:
-                                                st.error(f"Error rendering preview: {str(preview_e)}")
+#                                                 st.markdown(preview, unsafe_allow_html=True)
+#                                             except Exception as preview_e:
+#                                                 st.error(f"Error rendering preview: {str(preview_e)}")
                                     
-                                    # Approval and status
-                                    col1, col2, col3 = st.columns(3)
+#                                     # Approval and status
+#                                     col1, col2, col3 = st.columns(3)
                                     
-                                    current_status = ""
-                                    if hasattr(template, 'status') and template.status is not None:
-                                        current_status = str(template.status).lower()
+#                                     current_status = ""
+#                                     if hasattr(template, 'status') and template.status is not None:
+#                                         current_status = str(template.status).lower()
                                     
-                                    with col1:
-                                        # Approve button - only show if status is actually pending
-                                        if current_status == "pending":
-                                            if st.button("Approve Template"):
-                                                with st.spinner("Approving template..."):
-                                                    try:
-                                                        success = services["template_repository"].approve_template(selected_template_id)
-                                                        if success:
-                                                            st.success("Template approved successfully!")
-                                                            st.rerun()
-                                                        else:
-                                                            st.error("Failed to approve template")
-                                                    except Exception as e:
-                                                        st.error(f"Error approving template: {str(e)}")
+#                                     with col1:
+#                                         # Approve button - only show if status is actually pending
+#                                         if current_status == "pending":
+#                                             if st.button("Approve Template"):
+#                                                 with st.spinner("Approving template..."):
+#                                                     try:
+#                                                         success = services["template_repository"].approve_template(selected_template_id)
+#                                                         if success:
+#                                                             st.success("Template approved successfully!")
+#                                                             st.rerun()
+#                                                         else:
+#                                                             st.error("Failed to approve template")
+#                                                     except Exception as e:
+#                                                         st.error(f"Error approving template: {str(e)}")
                                     
-                                    with col2:
-                                        # Deactivate button - only show if status is approved
-                                        if current_status == "approved":
-                                            if st.button("Deactivate Template"):
-                                                with st.spinner("Deactivating template..."):
-                                                    try:
-                                                        success = services["template_repository"].deactivate_template(selected_template_id)
-                                                        if success:
-                                                            st.success("Template deactivated successfully!")
-                                                            st.rerun()
-                                                        else:
-                                                            st.error("Failed to deactivate template")
-                                                    except Exception as e:
-                                                        st.error(f"Error deactivating template: {str(e)}")
+#                                     with col2:
+#                                         # Deactivate button - only show if status is approved
+#                                         if current_status == "approved":
+#                                             if st.button("Deactivate Template"):
+#                                                 with st.spinner("Deactivating template..."):
+#                                                     try:
+#                                                         success = services["template_repository"].deactivate_template(selected_template_id)
+#                                                         if success:
+#                                                             st.success("Template deactivated successfully!")
+#                                                             st.rerun()
+#                                                         else:
+#                                                             st.error("Failed to deactivate template")
+#                                                     except Exception as e:
+#                                                         st.error(f"Error deactivating template: {str(e)}")
                                     
-                                    with col3:
-                                        # Test apply button - only show for active templates
-                                        if current_status in ["approved", "active"]:
-                                            if st.button("Test Apply to Proposal"):
-                                                st.info("This functionality is not yet implemented")
-                                else:
-                                    st.error("Template not found. It may have been deleted.")
-                            except Exception as template_e:
-                                st.error(f"Error loading template details: {str(template_e)}")
-                    except Exception as select_e:
-                        st.error(f"Error with template selection: {str(select_e)}")
-                else:
-                    st.warning("No valid templates found to select")
-            else:
-                st.warning("Templates were found but could not be processed properly")
-        else:
-            st.info(f"No templates found with status: {status_filter}")
+#                                     with col3:
+#                                         # Test apply button - only show for active templates
+#                                         if current_status in ["approved", "active"]:
+#                                             if st.button("Test Apply to Proposal"):
+#                                                 st.info("This functionality is not yet implemented")
+#                                 else:
+#                                     st.error("Template not found. It may have been deleted.")
+#                             except Exception as template_e:
+#                                 st.error(f"Error loading template details: {str(template_e)}")
+#                     except Exception as select_e:
+#                         st.error(f"Error with template selection: {str(select_e)}")
+#                 else:
+#                     st.warning("No valid templates found to select")
+#             else:
+#                 st.warning("Templates were found but could not be processed properly")
+#         else:
+#             st.info(f"No templates found with status: {status_filter}")
             
-    except Exception as e:
-        st.error(f"Error loading templates: {str(e)}")
+#     except Exception as e:
+#         st.error(f"Error loading templates: {str(e)}")
 
 # Start the app
 if __name__ == "__main__":

@@ -5,11 +5,11 @@ Factory for creating authentication service components with proper dependency in
 import logging
 from typing import Optional
 
-from services.authentication.core.interfaces import AuthenticationService, TokenService, PasswordService
-from services.authentication.providers.jwt_auth_service import JWTAuthService
-from services.authentication.providers.jwt_token_service import JWTTokenService
-from services.authentication.providers.bcrypt_password_service import BcryptPasswordService
-from repositories.user_repository import UserRepository
+from src.services.authentication.core.interfaces import AuthenticationService, TokenService, PasswordService
+from src.services.authentication.providers.jwt_auth_service import JWTAuthService
+from src.services.authentication.providers.jwt_token_service import JWTTokenService
+from src.services.authentication.providers.bcrypt_password_service import BcryptPasswordService
+from src.repositories.user_repository import UserRepository
 
 logger = logging.getLogger(__name__)
 

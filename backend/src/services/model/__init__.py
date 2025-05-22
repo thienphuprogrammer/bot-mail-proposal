@@ -12,7 +12,7 @@ Directory Structure:
 Example usage:
 ```python
 # Create a model service using the factory
-from services.model import create_model_service
+from src.services.model import create_model_service
 
 # Create a default model service (LangChain with GPT-4)
 model_service = create_model_service()
@@ -26,7 +26,7 @@ proposal_html = model_service.generate_proposal(requirements)
 """
 
 # Export core interfaces
-from services.model.core.interfaces import (
+from src.services.model.core.interfaces import (
     AIService,
     TextGenerationService,
     RequirementsExtractionService,
@@ -34,12 +34,12 @@ from services.model.core.interfaces import (
 )
 
 # Export factory and facade
-from services.model.core.model_factory import ModelServiceFactory
-from services.model.core.model_facade import ModelServiceFacade
+from src.services.model.core.model_factory import ModelServiceFactory
+from src.services.model.core.model_facade import ModelServiceFacade
 
 # Export providers
-from services.model.providers.azure_service import AzureModelService
-from services.model.providers.langchain_service import LangChainModelService
+from src.services.model.providers.azure_service import AzureModelService
+from src.services.model.providers.langchain_service import LangChainModelService
 
 # Convenient factory function
 def create_model_service(provider: str = "langchain", **kwargs) -> ModelServiceFacade:

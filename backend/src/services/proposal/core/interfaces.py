@@ -15,8 +15,8 @@ across different proposal generation and rendering strategies.
 
 from abc import ABC, abstractmethod
 from typing import Optional, List, Dict, Any, Tuple
-from models.proposal import ExtractedData
-from models.email import Email
+from src.models.proposal import ExtractedData
+from src.models.email import Email
 
 
 class BaseProposalService(ABC):

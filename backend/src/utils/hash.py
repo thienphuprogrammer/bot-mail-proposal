@@ -11,7 +11,7 @@ import hmac
 from pathlib import Path
 from typing import Union, Dict, Any, Optional
 
-from core.config import settings
+from src.core.config import settings
 
 
 def hash_file(file_path: Union[str, Path], algorithm: str = 'sha256', chunk_size: int = 4096) -> str:

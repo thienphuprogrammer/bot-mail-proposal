@@ -1,0 +1,12 @@
+api
+core
+database
+main
+models
+prompts
+repositories
+scripts
+services
+streamlit_app
+test
+utils

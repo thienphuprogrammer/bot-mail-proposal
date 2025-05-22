@@ -2,11 +2,11 @@ from typing import Dict, Any, List, Optional
 from datetime import datetime
 from bson import ObjectId
 
-from repositories.base_repository import MongoRepository
-from models.email import Email, EmailCreate, EmailUpdate
-from database.mongodb import MongoDB
-from core.config import settings
-from utils.crypto import encrypt_data, decrypt_data
+from src.repositories.base_repository import MongoRepository
+from src.models.email import Email, EmailCreate, EmailUpdate
+from src.database.mongodb import MongoDB
+from src.core.config import settings
+from src.utils.crypto import encrypt_data, decrypt_data
 
 class EmailRepository(MongoRepository[Email, EmailCreate]):
     """Repository for Email operations."""

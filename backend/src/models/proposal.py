@@ -5,7 +5,7 @@ from bson import ObjectId
 from enum import Enum
 from decimal import Decimal
 
-from models.user import PyObjectId
+from src.models.user import PyObjectId
 
 class ProposalStatus(str, Enum):
     """Enum for proposal statuses."""
@@ -121,7 +121,7 @@ class ProposalCreate(ProposalBase):
     pass
 
 class Proposal(ProposalBase):
-    """Model for a proposal returned from API."""
+    """Model for a proposal returned from src.api."""
     id: PyObjectId = Field(default_factory=PyObjectId, alias="_id", description="Proposal ID")
     timestamps: Dict[str, datetime] = Field(
         default_factory=lambda: {

@@ -4,7 +4,7 @@ from pymongo.database import Database
 from typing import Dict, Any, Optional
 import logging
 
-from core.config import settings
+from src.core.config import settings
 
 logger = logging.getLogger(__name__)
 

@@ -7,14 +7,14 @@ from typing import Dict, Any, Optional, List, Tuple
 from datetime import datetime
 import os
 
-from services.proposal.core.interfaces import BaseProposalService
-from services.proposal.generators.ai_generator import AIProposalGenerator
-from services.proposal.renderers.pdf_renderer import PDFProposalRenderer
-from services.mail.core.mail_facade import MailServiceFacade
-from repositories.proposal_repository import ProposalRepository
-from repositories.email_repository import EmailRepository
+from src.services.proposal.core.interfaces import BaseProposalService
+from src.services.proposal.generators.ai_generator import AIProposalGenerator
+from src.services.proposal.renderers.pdf_renderer import PDFProposalRenderer
+from src.services.mail.core.mail_facade import MailServiceFacade
+from src.repositories.proposal_repository import ProposalRepository
+from src.repositories.email_repository import EmailRepository
 
-from models.proposal import (
+from src.models.proposal import (
     Proposal,
     ProposalCreate,
     ProposalUpdate,
@@ -24,8 +24,8 @@ from models.proposal import (
     ExtractedData,
     ProposalVersion
 )
-from models.email import Email
-from models.proposal import ApprovalHistory
+from src.models.email import Email
+from src.models.proposal import ApprovalHistory
 
 
 logger = logging.getLogger(__name__)
@@ -674,7 +674,7 @@ class ProposalServiceFacade(BaseProposalService):
             )
             
             # Log sent email using the proper Pydantic model
-            from models.email import SentEmailCreate
+            from src.models.email import SentEmailCreate
             
             sent_email_create = SentEmailCreate(
                 proposal_id=proposal_id,
@@ -870,7 +870,7 @@ class ProposalServiceFacade(BaseProposalService):
             )
             
             # Create sent email using the proper Pydantic model
-            from models.email import SentEmailCreate
+            from src.models.email import SentEmailCreate
             
             # Prepare recipients list (primary + cc + bcc)
             recipients = [recipient]

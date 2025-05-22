@@ -5,12 +5,12 @@ Factory for creating proposal service components with proper dependency injectio
 import logging
 from typing import Dict, Any, Optional
 
-from services.proposal.core.interfaces import BaseProposalService, ProposalGenerator, ProposalRenderer
-from services.proposal.core.proposal_facade import ProposalServiceFacade
-from services.proposal.generators.ai_generator import AIProposalGenerator
-from services.proposal.renderers.pdf_renderer import PDFProposalRenderer
-from services.mail.core.mail_facade import MailServiceFacade
-from services.mail.core.mail_factory import MailServiceFactory
+from src.services.proposal.core.interfaces import BaseProposalService, ProposalGenerator, ProposalRenderer
+from src.services.proposal.core.proposal_facade import ProposalServiceFacade
+from src.services.proposal.generators.ai_generator import AIProposalGenerator
+from src.services.proposal.renderers.pdf_renderer import PDFProposalRenderer
+from src.services.mail.core.mail_facade import MailServiceFacade
+from src.services.mail.core.mail_factory import MailServiceFactory
 
 logger = logging.getLogger(__name__)
 

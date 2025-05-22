@@ -9,8 +9,8 @@ from typing import Dict, List, Any, Optional, Set
 from datetime import datetime
 from pathlib import Path
 
-from services.mail.core.interfaces import MailProcessor, BaseMailService
-from models.email import Email, EmailCreate
+from src.services.mail.core.interfaces import MailProcessor, BaseMailService
+from src.models.email import Email, EmailCreate
 from bs4 import BeautifulSoup
 import re
 import html

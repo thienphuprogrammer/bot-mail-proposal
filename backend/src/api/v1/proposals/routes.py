@@ -1,21 +1,22 @@
-from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks
+from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks, Query
 from typing import List, Optional, Dict, Any
 from datetime import datetime
 from pydantic import BaseModel, Field
-from api.v1.auth.routes import get_current_user
-from core.config import settings
+# from src.api.v1.auth.routes import get_current_user
+from src.core.config import settings
 import logging
 import uuid
 from bson import ObjectId
 
-from models.proposal import Proposal as ProposalModel, ProposalStatus
-from repositories.proposal_repository import ProposalRepository
-from repositories.email_repository import EmailRepository
-from repositories.sent_email_repository import SentEmailRepository
-from services.proposal.core.proposal_factory import ProposalServiceFactory
-from services.mail.core.mail_factory import MailServiceFactory
+from src.models.proposal import Proposal
+from src.repositories.proposal_repository import ProposalRepository
+from src.repositories.email_repository import EmailRepository
+from src.repositories.sent_email_repository import SentEmailRepository
+from src.services.proposal.core.proposal_factory import ProposalServiceFactory
+from src.services.mail.core.mail_factory import MailServiceFactory
+# from src.core.auth import get_current_user
 
-router = APIRouter()
+router = APIRouter(prefix="/proposals", tags=["proposals"])
 logger = logging.getLogger(__name__)
 
 # Initialize repositories and services
@@ -46,62 +47,30 @@ class ProposalResponse(BaseModel):
     class Config:
         orm_mode = True
 
-@router.get("/", response_model=List[Dict[str, Any]])
-async def get_proposals(
-    skip: int = 0, 
-    limit: int = 20, 
-    status: Optional[str] = None,
-    current_user = Depends(get_current_user)
+@router.get("/", response_model=List[Proposal])
+async def list_proposals(
+    status: Optional[str] = Query(None, description="Filter by proposal status"),
+    skip: int = Query(0, ge=0),
+    limit: int = Query(100, ge=1, le=1000),
+    # current_user: Dict = Depends(get_current_user)
 ):
     """
-    Get all proposals, with optional filtering by status.
+    List proposals with optional status filtering.
     """
     try:
         filter_dict = {}
         if status:
-            filter_dict["current_status"] = status
-            
-        proposals = proposal_repository.find_all(
-            filter_dict=filter_dict,
-            skip=skip,
-            limit=limit
-        )
-        
-        # Convert to response format
-        result = []
-        for proposal in proposals:
-            # Get related email subject
-            email = None
-            if hasattr(proposal, 'email_id') and proposal.email_id:
-                try:
-                    email = email_repository.find_by_id(str(proposal.email_id))
-                except Exception:
-                    pass
-                
-            proposal_dict = {
-                "id": str(proposal.id),
-                "email_id": str(proposal.email_id),
-                "project_name": proposal.extracted_data.project_name if hasattr(proposal, 'extracted_data') and hasattr(proposal.extracted_data, 'project_name') else "Unknown",
-                "description": proposal.extracted_data.description if hasattr(proposal, 'extracted_data') and hasattr(proposal.extracted_data, 'description') else "",
-                "current_status": proposal.current_status,
-                "created_at": proposal.created_at,
-                "email_subject": email.subject if email else "Unknown",
-                "has_pdf": hasattr(proposal, 'proposal_versions') and proposal.proposal_versions and len(proposal.proposal_versions) > 0 and hasattr(proposal.proposal_versions[-1], 'pdf_path')
-            }
-            result.append(proposal_dict)
-        
-        return result
-    except Exception as e:
-        logger.error(f"Error retrieving proposals: {str(e)}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error retrieving proposals: {str(e)}"
-        )
+            filter_dict["status"] = status
 
-@router.get("/{proposal_id}", response_model=Dict[str, Any])
+        proposals = proposal_repository.find_all(filter_dict=filter_dict, skip=skip, limit=limit)
+        return proposals
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.get("/{proposal_id}", response_model=Proposal)
 async def get_proposal(
     proposal_id: str,
-    current_user = Depends(get_current_user)
+    # current_user: Dict = Depends(get_current_user)
 ):
     """
     Get a specific proposal by ID.
@@ -109,50 +78,97 @@ async def get_proposal(
     try:
         proposal = proposal_repository.find_by_id(proposal_id)
         if not proposal:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Proposal with ID {proposal_id} not found"
-            )
-        
-        # Get email if available
-        email = None
-        if hasattr(proposal, 'email_id') and proposal.email_id:
-            try:
-                email = email_repository.find_by_id(str(proposal.email_id))
-            except Exception:
-                pass
-            
-        # Convert to response dictionary
-        proposal_dict = {
-            "id": str(proposal.id),
-            "email_id": str(proposal.email_id) if hasattr(proposal, 'email_id') else None,
-            "project_name": proposal.extracted_data.project_name if hasattr(proposal, 'extracted_data') and hasattr(proposal.extracted_data, 'project_name') else "Unknown",
-            "description": proposal.extracted_data.description if hasattr(proposal, 'extracted_data') and hasattr(proposal.extracted_data, 'description') else "",
-            "current_status": proposal.current_status,
-            "created_at": proposal.created_at,
-            "email_subject": email.subject if email else "Unknown",
-            "email_sender": email.sender if email else "Unknown",
-            "content": proposal.proposal_versions[-1].content if hasattr(proposal, 'proposal_versions') and proposal.proposal_versions and len(proposal.proposal_versions) > 0 and hasattr(proposal.proposal_versions[-1], 'content') else "",
-            "pdf_path": proposal.proposal_versions[-1].pdf_path if hasattr(proposal, 'proposal_versions') and proposal.proposal_versions and len(proposal.proposal_versions) > 0 and hasattr(proposal.proposal_versions[-1], 'pdf_path') else None,
-            "version_count": len(proposal.proposal_versions) if hasattr(proposal, 'proposal_versions') and proposal.proposal_versions else 0
-        }
-        
-        return proposal_dict
-        
-    except HTTPException:
-        raise
+            raise HTTPException(status_code=404, detail="Proposal not found")
+        return proposal
     except Exception as e:
-        logger.error(f"Error retrieving proposal {proposal_id}: {str(e)}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error retrieving proposal: {str(e)}"
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/{proposal_id}/generate")
+async def generate_proposal(
+    proposal_id: str,
+    # current_user: Dict = Depends(get_current_user)
+):
+    """
+    Generate a proposal document.
+    """
+    try:
+        # Create proposal service
+        proposal_service = ProposalServiceFactory.create_proposal_facade(
+            proposal_repository=proposal_repository,
+            email_repository=email_repository,
+            sent_email_repository=None,  # Not needed for generation
+            mail_service=mail_service
         )
+
+        # Generate proposal
+        result = proposal_service.generate_proposal(proposal_id)
+        if not result:
+            raise HTTPException(status_code=400, detail="Failed to generate proposal document")
+
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/{proposal_id}/send")
+async def send_proposal(
+    proposal_id: str,
+    recipient_email: str = Query(..., description="Email address of the recipient"),
+    # current_user: Dict = Depends(get_current_user)
+):
+    """
+    Send a proposal to a recipient.
+    """
+    try:
+        # Create proposal service
+        proposal_service = ProposalServiceFactory.create_proposal_facade(
+            proposal_repository=proposal_repository,
+            email_repository=email_repository,
+            sent_email_repository=sent_email_repository,
+            mail_service=mail_service
+        )
+
+        # Send proposal
+        result = proposal_service.send_proposal(proposal_id, recipient_email)
+        if not result:
+            raise HTTPException(status_code=400, detail="Failed to send proposal")
+
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.get("/stats/summary")
+async def get_proposal_stats(
+    # current_user: Dict = Depends(get_current_user)
+):
+    """
+    Get proposal statistics summary.
+    """
+    try:
+        # Get total proposals
+        total_proposals = len(proposal_repository.find_all(filter_dict={}, skip=0, limit=1000))
+        
+        # Get proposals by status
+        status_counts = {}
+        for status in ["draft", "sent", "accepted", "rejected"]:
+            count = len(proposal_repository.find_all(
+                filter_dict={"status": status}, 
+                skip=0, 
+                limit=1000
+            ))
+            status_counts[status] = count
+
+        return {
+            "total_proposals": total_proposals,
+            "status_counts": status_counts
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 @router.post("/{proposal_id}/approve", response_model=Dict[str, Any])
 async def approve_proposal(
     proposal_id: str,
     approval_notes: Optional[str] = None,
-    current_user = Depends(get_current_user)
+    # current_user = Depends(get_current_user)
 ):
     """
     Approve a proposal.
@@ -210,7 +226,7 @@ async def approve_proposal(
 async def generate_pdf(
     proposal_id: str,
     background_tasks: BackgroundTasks,
-    current_user = Depends(get_current_user)
+    # current_user = Depends(get_current_user)
 ):
     """
     Generate PDF for a proposal.
@@ -264,7 +280,7 @@ async def send_proposal(
     proposal_id: str,
     send_options: SendProposalRequest = None,
     background_tasks: BackgroundTasks = BackgroundTasks(),
-    current_user = Depends(get_current_user)
+    # current_user = Depends(get_current_user)
 ):
     """
     Send a proposal to the client.

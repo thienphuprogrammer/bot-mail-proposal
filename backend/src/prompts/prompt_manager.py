@@ -10,8 +10,8 @@ from typing import Dict, Any, Optional, List, Union
 import logging
 from jinja2 import Template
 
-from core.config import settings
-from core.const import TEMPLATES_DIR
+from src.core.config import settings
+from src.core.const import TEMPLATES_DIR
 
 # Setup logger
 logger = logging.getLogger(__name__)

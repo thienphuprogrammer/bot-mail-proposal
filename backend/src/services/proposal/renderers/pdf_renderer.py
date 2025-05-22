@@ -11,9 +11,9 @@ import markdown
 import re
 from pathlib import Path
 
-from services.proposal.core.interfaces import ProposalRenderer
-from repositories.base_repository import BaseRepository
-from core.company_info import COMPANY_INFO
+from src.services.proposal.core.interfaces import ProposalRenderer
+from src.repositories.base_repository import BaseRepository
+from src.core.company_info import COMPANY_INFO
 
 # Configure logging
 logger = logging.getLogger(__name__)

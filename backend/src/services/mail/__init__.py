@@ -14,7 +14,7 @@ Directory Structure:
 
 Usage Example:
     ```python
-    from services.mail import create_mail_service
+    from src.services.mail import create_mail_service
     
     # Get a configured email service
     mail_service = create_mail_service()
@@ -25,7 +25,7 @@ Usage Example:
 """
 
 # Export core interfaces and classes
-from services.mail.core import (
+from src.services.mail.core import (
     BaseMailService,
     MailProcessor,
     MailFilter,
@@ -34,13 +34,13 @@ from services.mail.core import (
 )
 
 # Export provider implementations
-from services.mail.providers import GmailService, OutlookService
+from src.services.mail.providers import GmailService, OutlookService
 
 # Export processor implementations
-from services.mail.processors import GmailMailProcessor, OutlookMailProcessor
+from src.services.mail.processors import GmailMailProcessor, OutlookMailProcessor
 
 # Export filter implementations
-from services.mail.filters import MailFilterService
+from src.services.mail.filters import MailFilterService
 
 __all__ = [
     # Core interfaces

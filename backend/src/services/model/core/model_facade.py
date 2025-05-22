@@ -5,7 +5,7 @@ Facade for the model service providing a simplified interface.
 import logging
 from typing import Dict, Any, Optional, List
 
-from services.model.core.interfaces import AIService, TextGenerationService, RequirementsExtractionService, DocumentGenerationService
+from src.services.model.core.interfaces import AIService, TextGenerationService, RequirementsExtractionService, DocumentGenerationService
 
 logger = logging.getLogger(__name__)
 

@@ -24,7 +24,7 @@ from cryptography.hazmat.primitives.serialization import (
 from cryptography.exceptions import InvalidSignature
 
 # Import from core configuration
-from core.config import settings
+from src.core.config import settings
 
 
 def generate_key(password: str, salt: Optional[bytes] = None) -> Tuple[bytes, bytes]:

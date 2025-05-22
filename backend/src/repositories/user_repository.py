@@ -2,10 +2,10 @@ from typing import Dict, Any, Optional, List
 from datetime import datetime
 from bson import ObjectId
 
-from database.mongodb import MongoDB
-from models.user import User, UserCreate
-from repositories.base_repository import MongoRepository
-from utils.hash import verify_password
+from src.database.mongodb import MongoDB
+from src.models.user import User, UserCreate
+from src.repositories.base_repository import MongoRepository
+from src.utils.hash import verify_password
 
 class UserRepository(MongoRepository[User, UserCreate]):
     """Repository for User operations."""

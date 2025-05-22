@@ -19,11 +19,11 @@ from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
 from google.auth.transport.requests import Request
 
-from models.email import Email, EmailCreate
-from services.mail.core.interfaces import BaseMailService
-from services.mail.processors.gmail_processor import GmailMailProcessor
-from core.config import settings
-from models.proposal import ExtractedData
+from src.models.email import Email, EmailCreate
+from src.services.mail.core.interfaces import BaseMailService
+from src.services.mail.processors.gmail_processor import GmailMailProcessor
+from src.core.config import settings
+from src.models.proposal import ExtractedData
 logger = logging.getLogger(__name__)
 
 class GmailService(BaseMailService):

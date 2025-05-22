@@ -4,14 +4,14 @@ Factory for creating mail service components with proper dependency injection.
 
 from typing import Dict, Any, Optional, Type
 
-from services.mail.core.interfaces import BaseMailService, MailProcessor, MailFilter
-from services.mail.core.mail_facade import MailServiceFacade
-from services.mail.providers.gmail_service import GmailService
-from services.mail.providers.outlook_service import OutlookService
-from services.mail.processors.gmail_processor import GmailMailProcessor
-from services.mail.processors.outlook_processor import OutlookMailProcessor
-from services.mail.filters.mail_filter import MailFilterService
-from repositories.email_repository import EmailRepository
+from src.services.mail.core.interfaces import BaseMailService, MailProcessor, MailFilter
+from src.services.mail.core.mail_facade import MailServiceFacade
+from src.services.mail.providers.gmail_service import GmailService
+from src.services.mail.providers.outlook_service import OutlookService
+from src.services.mail.processors.gmail_processor import GmailMailProcessor
+from src.services.mail.processors.outlook_processor import OutlookMailProcessor
+from src.services.mail.filters.mail_filter import MailFilterService
+from src.repositories.email_repository import EmailRepository
 
 class MailServiceFactory:
     """Factory for creating mail service components."""

@@ -8,9 +8,9 @@ import logging
 from typing import Dict, Any, Optional, List
 from datetime import datetime
 
-from services.model.core.interfaces import AIService
-from models.proposal import ExtractedData, ProposalStatus
-from core.config import settings
+from src.services.model.core.interfaces import AIService
+from src.models.proposal import ExtractedData, ProposalStatus
+from src.core.config import settings
 
 logger = logging.getLogger(__name__)
 

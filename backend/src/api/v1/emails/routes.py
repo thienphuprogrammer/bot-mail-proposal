@@ -1,212 +1,141 @@
-from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks
+from fastapi import APIRouter, Depends, HTTPException, Query
 from typing import List, Optional, Dict, Any
 from datetime import datetime
-from pydantic import BaseModel, Field
-from api.v1.auth.routes import get_current_user
-from core.config import settings
-import logging
 from bson import ObjectId
-from models.email import Email as EmailModel
-from services.mail.core.mail_factory import MailServiceFactory
-from repositories.email_repository import EmailRepository
 
-router = APIRouter()
-logger = logging.getLogger(__name__)
+from src.models.email import Email, EmailCreate
+from src.services.mail.core.mail_factory import MailServiceFactory
+from src.repositories.email_repository import EmailRepository
+# from src.core.auth import get_current_user
 
-# Email models
-class EmailBase(BaseModel):
-    subject: str
-    sender: str
-    body: str
-    
-class EmailResponse(EmailBase):
-    id: str
-    received_at: datetime
-    processed: bool
-    
-    class Config:
-        orm_mode = True
+router = APIRouter(prefix="/emails", tags=["emails"])
 
-# Initialize repositories and services
-email_repository = EmailRepository()
-mail_service = MailServiceFactory.create_default_outlook_facade()
-
-@router.get("/", response_model=List[EmailResponse])
-async def get_emails(
-    skip: int = 0, 
-    limit: int = 20, 
-    processed: Optional[bool] = None,
-    current_user = Depends(get_current_user)
+@router.get("/", response_model=List[Email])
+async def list_emails(
+    show_processed: bool = Query(True, description="Show processed emails"),
+    show_unprocessed: bool = Query(True, description="Show unprocessed emails"),
+    skip: int = Query(0, ge=0),
+    limit: int = Query(100, ge=1, le=1000),
+    # current_user: Dict = Depends(get_current_user)
 ):
     """
-    Get all emails, with optional filtering by processed status.
+    List emails with optional filtering.
     """
-    filter_dict = {}
-    if processed is not None:
-        filter_dict["processed"] = processed
-        
-    emails = email_repository.find_all(
-        filter_dict=filter_dict,
-        skip=skip,
-        limit=limit
-    )
-    
-    # Convert to API response format
-    results = []
-    for email in emails:
-        results.append({
-            "id": str(email.id),
-            "subject": email.subject,
-            "sender": email.sender,
-            "body": email.body,
-            "received_at": email.received_at,
-            "processed": email.processed
-        })
-    
-    return results
+    try:
+        # Build filter
+        filter_dict = {}
+        if show_processed and not show_unprocessed:
+            filter_dict["processed"] = True
+        elif not show_processed and show_unprocessed:
+            filter_dict["processed"] = False
 
-@router.get("/{email_id}", response_model=Dict[str, Any])
+        email_repository = EmailRepository()
+        emails = email_repository.find_all(filter_dict=filter_dict, skip=skip, limit=limit)
+        return emails
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.get("/{email_id}", response_model=Email)
 async def get_email(
     email_id: str,
-    current_user = Depends(get_current_user)
+    # current_user: Dict = Depends(get_current_user)
 ):
     """
     Get a specific email by ID.
     """
     try:
+        email_repository = EmailRepository()
         email = email_repository.find_by_id(email_id)
         if not email:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Email with ID {email_id} not found"
-            )
-        
-        # Convert to dictionary with string ID
-        email_dict = email.__dict__
-        email_dict["id"] = str(email_dict["id"])
-        
-        return email_dict
+            raise HTTPException(status_code=404, detail="Email not found")
+        return email
     except Exception as e:
-        logger.error(f"Error retrieving email {email_id}: {str(e)}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error retrieving email: {str(e)}"
-        )
+        raise HTTPException(status_code=500, detail=str(e))
 
 @router.post("/sync")
 async def sync_emails(
-    background_tasks: BackgroundTasks,
-    max_results: int = 20,
-    current_user = Depends(get_current_user)
+    query: str = Query("isRead eq false", description="Email query filter"),
+    max_results: int = Query(20, ge=1, le=100),
+    folder: str = Query("inbox", description="Email folder to sync"),
+    include_spam_trash: bool = Query(True, description="Include spam and trash"),
+    only_recent: bool = Query(True, description="Only sync recent emails"),
+    # current_user: Dict = Depends(get_current_user)
 ):
     """
-    Trigger email synchronization with Outlook (async background task).
+    Sync emails from the email service.
     """
     try:
-        background_tasks.add_task(
-            fetch_emails_task,
-            max_results=max_results
+        mail_service = MailServiceFactory.create_default_outlook_facade()
+        result = mail_service.fetch_and_process_emails(
+            query=query,
+            max_results=max_results,
+            folder=folder,
+            include_spam_trash=include_spam_trash,
+            only_recent=only_recent
         )
-        return {"status": "Email synchronization started"}
+        return result
     except Exception as e:
-        logger.error(f"Error triggering email sync: {str(e)}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error triggering email sync: {str(e)}"
-        )
+        raise HTTPException(status_code=500, detail=str(e))
 
-@router.post("/process/{email_id}")
+@router.post("/{email_id}/process")
 async def process_email(
     email_id: str,
-    background_tasks: BackgroundTasks,
-    current_user = Depends(get_current_user)
+    # current_user: Dict = Depends(get_current_user)
 ):
     """
-    Process a specific email to generate a proposal.
+    Process an email into a proposal.
     """
     try:
-        email = email_repository.find_by_id(email_id)
-        if not email:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Email with ID {email_id} not found"
-            )
-        
-        if email.processed:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Email with ID {email_id} has already been processed"
-            )
-        
-        # Add task to process email
-        from services.proposal.core.proposal_factory import ProposalServiceFactory
-        from repositories.proposal_repository import ProposalRepository
-        from repositories.sent_email_repository import SentEmailRepository
-        
-        # Initialize required services
+        from src.services.proposal.core.proposal_factory import ProposalServiceFactory
+        from src.repositories.proposal_repository import ProposalRepository
+        from src.repositories.email_repository import EmailRepository
+        from src.services.mail.core.mail_factory import MailServiceFactory
+
+        # Initialize services
+        email_repository = EmailRepository()
         proposal_repository = ProposalRepository()
-        sent_email_repository = SentEmailRepository()
+        mail_service = MailServiceFactory.create_default_outlook_facade()
         
         # Create proposal service
         proposal_service = ProposalServiceFactory.create_proposal_facade(
             proposal_repository=proposal_repository,
             email_repository=email_repository,
-            sent_email_repository=sent_email_repository,
+            sent_email_repository=None,  # Not needed for processing
             mail_service=mail_service
         )
-        
-        # Process in background
-        background_tasks.add_task(
-            process_email_task,
-            email_id=email_id,
-            proposal_service=proposal_service
-        )
-        
-        return {"status": f"Processing started for email {email_id}"}
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Error processing email {email_id}: {str(e)}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error processing email: {str(e)}"
-        )
 
-# Actual function for email fetching
-async def fetch_emails_task(max_results: int = 20):
-    """Fetch emails from Outlook."""
-    logger.info(f"Fetching up to {max_results} emails from Outlook...")
-    try:
-        result = mail_service.fetch_and_process_emails(
-            query="isRead eq false",
-            max_results=max_results,
-            folder="inbox",
-            include_spam_trash=True,
-            only_recent=True
-        )
-        
-        if isinstance(result, dict):
-            fetched_count = result.get("fetched", 0)
-            processed_count = result.get("processed", 0)
-            logger.info(f"Fetched {fetched_count} emails, processed {processed_count}")
-        elif isinstance(result, list):
-            logger.info(f"Processed {len(result)} emails")
-        else:
-            logger.info("Email fetch completed")
-    except Exception as e:
-        logger.error(f"Error fetching emails: {str(e)}")
-        raise
-
-# Actual function for email processing
-async def process_email_task(email_id: str, proposal_service: Any):
-    """Process an email to generate a proposal."""
-    logger.info(f"Processing email {email_id}...")
-    try:
+        # Process email
         proposal_id = proposal_service.analyze_email(email_id)
-        if proposal_id:
-            logger.info(f"Email {email_id} processed successfully, proposal {proposal_id} created")
-        else:
-            logger.error(f"Failed to generate proposal for email {email_id}")
+        if not proposal_id:
+            raise HTTPException(status_code=400, detail="Failed to generate proposal")
+
+        return {"proposal_id": str(proposal_id)}
     except Exception as e:
-        logger.error(f"Error processing email {email_id}: {str(e)}")
-        raise
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.get("/stats/summary")
+async def get_email_stats(
+    # current_user: Dict = Depends(get_current_user)
+):
+    """
+    Get email statistics summary.
+    """
+    try:
+        email_repository = EmailRepository()
+        
+        # Get total emails
+        total_emails = len(email_repository.find_all(filter_dict={}, skip=0, limit=1000))
+        
+        # Get unprocessed emails
+        unprocessed_emails = len(email_repository.find_all(
+            filter_dict={"processing_status": "pending"}, 
+            skip=0, 
+            limit=1000
+        ))
+
+        return {
+            "total_emails": total_emails,
+            "unprocessed_emails": unprocessed_emails
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))

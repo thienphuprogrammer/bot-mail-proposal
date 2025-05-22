@@ -5,9 +5,9 @@ Factory for creating model service components.
 import logging
 from typing import Optional, Dict, Any
 
-from services.model.core.interfaces import AIService
-from services.model.providers.azure_service import AzureModelService
-from services.model.providers.langchain_service import LangChainModelService
+from src.services.model.core.interfaces import AIService
+from src.services.model.providers.azure_service import AzureModelService
+from src.services.model.providers.langchain_service import LangChainModelService
 
 logger = logging.getLogger(__name__)
 

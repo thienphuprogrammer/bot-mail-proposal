@@ -1,21 +1,21 @@
 # Initialize MongoDB connection
-from database.mongodb import init_db, MongoDB
-from repositories.email_repository import EmailRepository
-from repositories.proposal_repository import ProposalRepository
-from repositories.sent_email_repository import SentEmailRepository
-from repositories.user_repository import UserRepository
-from repositories.template_repository import TemplateRepository
+from src.database.mongodb import init_db, MongoDB
+from src.repositories.email_repository import EmailRepository
+from src.repositories.proposal_repository import ProposalRepository
+from src.repositories.sent_email_repository import SentEmailRepository
+from src.repositories.user_repository import UserRepository
+from src.repositories.template_repository import TemplateRepository
 
 # Import refactored services
-from services.authentication import create_auth_service
-from services.model import create_model_service
-from services.mail.core.mail_facade import MailServiceFacade
-from services.mail.core.mail_factory import MailServiceFactory
-from services.proposal.core.proposal_facade import ProposalServiceFacade
-from services.proposal.core.proposal_factory import ProposalServiceFactory
-from services.mail.providers.outlook_service import OutlookService
-from services.template.template_service import TemplateService
-from core.config import settings
+from src.services.authentication import create_auth_service
+from src.services.model import create_model_service
+from src.services.mail.core.mail_facade import MailServiceFacade
+from src.services.mail.core.mail_factory import MailServiceFactory
+from src.services.proposal.core.proposal_facade import ProposalServiceFacade
+from src.services.proposal.core.proposal_factory import ProposalServiceFactory
+from src.services.mail.providers.outlook_service import OutlookService
+from src.services.template.template_service import TemplateService
+from src.core.config import settings
 import httpx
 import webbrowser
 import os

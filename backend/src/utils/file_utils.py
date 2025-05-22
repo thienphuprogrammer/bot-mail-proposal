@@ -13,7 +13,7 @@ import mimetypes
 import zipfile
 import logging
 
-from utils.hash import hash_file, verify_file_hash
+from src.utils.hash import hash_file, verify_file_hash
 
 # Setup logger
 logger = logging.getLogger(__name__)

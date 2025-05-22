@@ -4,8 +4,8 @@ import os
 from datetime import datetime
 from bson import ObjectId
 
-from models.user import PyObjectId
-from repositories.base_repository import BaseRepository
+from src.models.user import PyObjectId
+from src.repositories.base_repository import BaseRepository
 
 class TemplateModel:
     """Model for template."""

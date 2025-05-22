@@ -1,75 +1,118 @@
-from fastapi import APIRouter, Depends, HTTPException, status
-from fastapi.security import OAuth2PasswordRequestForm, OAuth2PasswordBearer
+from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
+from typing import Dict, Any
 from datetime import datetime, timedelta
-from pydantic import BaseModel
-from typing import Optional
-from core.config import settings
 from jose import JWTError, jwt
-import bcrypt
+from passlib.context import CryptContext
+from pydantic import BaseModel
 
-router = APIRouter()
+# from src.core.auth import create_access_token, get_current_user
 
-# Auth token model
-class Token(BaseModel):
-    access_token: str
-    token_type: str
-    
-class TokenData(BaseModel):
-    username: Optional[str] = None
+router = APIRouter(prefix="/auth", tags=["auth"])
 
-class UserAuth(BaseModel):
-    username: str
-    password: str
-    
-class UserCreate(UserAuth):
-    email: str
-    full_name: str
+# # Password hashing
+# pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
-# OAuth2 scheme for token
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/token")
+# # Models
+# class Token(BaseModel):
+#     access_token: str
+#     token_type: str
 
-@router.post("/token", response_model=Token)
-async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends()):
-    """Login to get access token."""
-    user = authenticate_user(form_data.username, form_data.password)
-    if not user:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Incorrect username or password",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-    access_token_expires = timedelta(minutes=settings.JWT_ACCESS_TOKEN_EXPIRE_MINUTES)
-    access_token = create_access_token(
-        data={"sub": user["username"]}, expires_delta=access_token_expires
-    )
-    return {"access_token": access_token, "token_type": "bearer"}
+# class TokenData(BaseModel):
+#     username: str | None = None
 
-@router.post("/register")
-async def register_user(user: UserCreate):
-    """Register a new user."""
-    if user.username in users_db:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Username already registered"
-        )
-    
-    # In production, store this in a real database
-    hashed_password = bcrypt.hashpw(user.password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
-    users_db[user.username] = {
-        "username": user.username,
-        "email": user.email,
-        "full_name": user.full_name,
-        "hashed_password": hashed_password
-    }
-    
-    return {"message": "User created successfully"}
+# class User(BaseModel):
+#     username: str
+#     email: str | None = None
+#     full_name: str | None = None
+#     disabled: bool | None = None
 
-@router.get("/me")
-async def read_users_me(current_user = Depends(get_current_user)):
-    """Get current user info."""
-    user_data = {
-        "username": current_user["username"],
-        "email": current_user["email"],
-        "full_name": current_user["full_name"]
-    }
-    return user_data
+# class UserInDB(User):
+#     hashed_password: str
+
+# @router.post("/token", response_model=Token)
+# async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends()):
+#     """
+#     Get access token for authentication.
+#     """
+#     try:
+#         # Verify credentials (implement your user verification logic here)
+#         user = verify_user(form_data.username, form_data.password)
+#         if not user:
+#             raise HTTPException(
+#                 status_code=401,
+#                 detail="Incorrect username or password",
+#                 headers={"WWW-Authenticate": "Bearer"},
+#             )
+
+#         # Create access token
+#         access_token = create_access_token(
+#             data={"sub": user.username}
+#         )
+#         return {"access_token": access_token, "token_type": "bearer"}
+#     except Exception as e:
+#         raise HTTPException(status_code=500, detail=str(e))
+
+# @router.get("/me", response_model=User)
+# async def read_users_me(current_user: Dict = Depends(get_current_user)):
+#     """
+#     Get current user information.
+#     """
+#     try:
+#         return current_user
+#     except Exception as e:
+#         raise HTTPException(status_code=500, detail=str(e))
+
+# @router.post("/register")
+# async def register_user(
+#     username: str = Query(..., description="Username for the new account"),
+#     email: str = Query(..., description="Email address for the new account"),
+#     password: str = Query(..., description="Password for the new account"),
+#     full_name: str = Query(None, description="Full name of the user")
+# ):
+#     """
+#     Register a new user.
+#     """
+#     try:
+#         # Check if user already exists
+#         if user_exists(username):
+#             raise HTTPException(status_code=400, detail="Username already registered")
+
+#         # Create new user
+#         hashed_password = pwd_context.hash(password)
+#         user = UserInDB(
+#             username=username,
+#             email=email,
+#             full_name=full_name,
+#             hashed_password=hashed_password,
+#             disabled=False
+#         )
+
+#         # Save user to database (implement your user storage logic here)
+#         save_user(user)
+
+#         return {"message": "User registered successfully"}
+#     except Exception as e:
+#         raise HTTPException(status_code=500, detail=str(e))
+
+# # Helper functions (implement these based on your user management system)
+# def verify_user(username: str, password: str) -> UserInDB | None:
+#     """
+#     Verify user credentials.
+#     """
+#     # Implement your user verification logic here
+#     pass
+
+# def user_exists(username: str) -> bool:
+#     """
+#     Check if a user exists.
+#     """
+#     # Implement your user existence check logic here
+#     pass
+
+# def save_user(user: UserInDB):
+#     """
+#     Save a new user to the database.
+#     """
+#     # Implement your user storage logic here
+#     pass

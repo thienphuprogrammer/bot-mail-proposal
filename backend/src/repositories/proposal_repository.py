@@ -3,9 +3,9 @@ from datetime import datetime
 from bson import ObjectId
 from pymongo.errors import PyMongoError
 
-from repositories.base_repository import MongoRepository
-from models.proposal import Proposal, ProposalCreate, ProposalUpdate, ProposalStatus
-from database.mongodb import MongoDB
+from src.repositories.base_repository import MongoRepository
+from src.models.proposal import Proposal, ProposalCreate, ProposalUpdate, ProposalStatus
+from src.database.mongodb import MongoDB
 
 class ProposalRepository(MongoRepository[Proposal, ProposalCreate]):
     """Repository for Proposal operations."""

@@ -5,8 +5,8 @@ Bcrypt password service implementation.
 import logging
 from typing import Optional
 
-from services.authentication.core.interfaces import PasswordService
-from utils.hash import hash_password, verify_password
+from src.services.authentication.core.interfaces import PasswordService
+from src.utils.hash import hash_password, verify_password
 logger = logging.getLogger(__name__)
 
 class BcryptPasswordService(PasswordService):

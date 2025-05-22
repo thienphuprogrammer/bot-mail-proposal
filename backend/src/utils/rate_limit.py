@@ -8,7 +8,7 @@ import logging
 from functools import wraps
 from collections import deque
 
-from core.const import DEFAULT_RATE_LIMIT, ADMIN_RATE_LIMIT, UserRole
+from src.core.const import DEFAULT_RATE_LIMIT, ADMIN_RATE_LIMIT, UserRole
 
 # Setup logger
 logger = logging.getLogger(__name__)

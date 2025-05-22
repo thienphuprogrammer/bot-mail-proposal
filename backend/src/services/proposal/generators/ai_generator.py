@@ -8,11 +8,11 @@ from typing import Dict, Any, Optional, List
 from datetime import datetime, timedelta
 from decimal import Decimal
 
-from services.proposal.core.interfaces import ProposalGenerator
-from services.model.core import ModelServiceFactory
-from core.config import settings
-from repositories.base_repository import BaseRepository
-from models.proposal import (
+from src.services.proposal.core.interfaces import ProposalGenerator
+from src.services.model.core import ModelServiceFactory
+from src.core.config import settings
+from src.repositories.base_repository import BaseRepository
+from src.models.proposal import (
     ExtractedData, 
     ProposalVersion, 
     ProposalStatus, 
@@ -21,7 +21,7 @@ from models.proposal import (
     Proposal,
     ProposalCreate
 )
-from models.email import Email
+from src.models.email import Email
 
 logger = logging.getLogger(__name__)
 

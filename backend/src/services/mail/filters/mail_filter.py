@@ -9,10 +9,10 @@ from typing import List, Dict, Any, Optional, Tuple
 import json
 from datetime import datetime
 
-from models.email import EmailCreate
-from services.mail.core.interfaces import MailFilter
-from services.model.providers.azure_service import AzureModelService
-from core.config import settings
+from src.models.email import EmailCreate
+from src.services.mail.core.interfaces import MailFilter
+from src.services.model.providers.azure_service import AzureModelService
+from src.core.config import settings
 from azure.ai.inference.models import SystemMessage, UserMessage
 
 logger = logging.getLogger(__name__)

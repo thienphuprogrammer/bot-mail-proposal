@@ -12,8 +12,8 @@ Directory Structure:
 
 Usage Example:
     ```python
-    from services.authentication import create_auth_service
-    from repositories.user_repository import UserRepository
+    from src.services.authentication import create_auth_service
+    from src.repositories.user_repository import UserRepository
     
     # Set up repository
     user_repo = UserRepository()
@@ -30,7 +30,7 @@ Usage Example:
 """
 
 # Export core interfaces and classes
-from services.authentication.core import (
+from src.services.authentication.core import (
     AuthenticationService,
     TokenService,
     PasswordService,
@@ -38,7 +38,7 @@ from services.authentication.core import (
 )
 
 # Export provider implementations
-from services.authentication.providers import (
+from src.services.authentication.providers import (
     JWTAuthService,
     JWTTokenService,
     BcryptPasswordService,

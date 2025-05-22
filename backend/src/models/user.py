@@ -60,7 +60,7 @@ class UserInDB(UserBase):
     }
 
 class User(UserBase):
-    """Model for a user returned from API."""
+    """Model for a user returned from src.api."""
     id: PyObjectId = Field(default_factory=PyObjectId, alias="_id")
     created_at: datetime
     last_login: Optional[datetime] = None

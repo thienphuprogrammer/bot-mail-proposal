@@ -1,0 +1,179 @@
+Metadata-Version: 2.4
+Name: backend
+Version: 0.1.0
+Summary: Add your description here
+Requires-Python: ==3.12.*
+Description-Content-Type: text/markdown
+Requires-Dist: fastapi==0.115.12
+Requires-Dist: uvicorn==0.34.0
+Requires-Dist: pydantic[email]<3.0.0,>=2.11.1
+Requires-Dist: typing-inspect==0.9.0
+Requires-Dist: typing-extensions==4.13.0
+Requires-Dist: pymongo==4.11.3
+Requires-Dist: motor==3.7.0
+Requires-Dist: beanie==1.29.0
+Requires-Dist: openai==1.69.0
+Requires-Dist: python-jose==3.4.0
+Requires-Dist: passlib==1.7.4
+Requires-Dist: python-multipart==0.0.6
+Requires-Dist: bcrypt==4.0.1
+Requires-Dist: pyjwt==2.6.0
+Requires-Dist: google-auth==2.38.0
+Requires-Dist: google-auth-oauthlib==1.2.1
+Requires-Dist: google-auth-httplib2==0.2.0
+Requires-Dist: google-api-python-client==2.166.0
+Requires-Dist: langchain==0.3.21
+Requires-Dist: langchain-openai==0.3.11
+Requires-Dist: langchain-core==0.3.49
+Requires-Dist: langchain-community==0.3.20
+Requires-Dist: langchain-text-splitters==0.3.7
+Requires-Dist: azure-ai-inference==1.0.0b9
+Requires-Dist: pydantic-core==2.33.0
+Requires-Dist: python-dotenv==1.1.0
+Requires-Dist: pytest==7.2.2
+Requires-Dist: requests==2.28.2
+Requires-Dist: streamlit==1.44.0
+Requires-Dist: PyMuPDF==1.25.4
+Requires-Dist: jinja2==3.1.2
+Requires-Dist: plotly<7.0.0,>=6.0.1
+Requires-Dist: spacy==3.8.4
+Requires-Dist: scikit-learn==1.6.1
+Requires-Dist: cryptography<45.0.0,>=44.0.2
+Requires-Dist: bs4<0.0.3,>=0.0.2
+Requires-Dist: pdfkit<2.0.0,>=1.0.0
+Requires-Dist: docx<0.3.0,>=0.2.4
+Requires-Dist: markdown<4.0,>=3.7
+Requires-Dist: msgraph-core<2.0.0,>=1.3.3
+Requires-Dist: azure-identity<2.0.0,>=1.21.0
+Requires-Dist: beautifulsoup4<5.0.0,>=4.13.3
+Requires-Dist: msal<2.0.0,>=1.32.0
+Requires-Dist: numpy>=2.2.6
+
+# Bot Mail Proposal System Backend
+
+A FastAPI-based backend for automatically generating and sending proposals based on email inquiries.
+
+## Features
+
+- Email synchronization with Gmail
+- Automated proposal generation from emails
+- User authentication with JWT
+- Proposal management
+
+## Project Structure
+
+```
+backend/
+├── src/                     # Source code
+│   ├── api/                 # API endpoints
+│   │   └── v1/              # API version 1
+│   │       ├── auth/        # Authentication routes
+│   │       ├── emails/      # Email management routes
+│   │       └── proposals/   # Proposal management routes
+│   ├── core/                # Core modules (config, constants)
+│   ├── database/            # Database connections
+│   ├── models/              # Pydantic models
+│   ├── services/            # Business logic services
+│   └── utils/               # Utility functions
+├── templates/               # Email templates
+├── scripts/                 # Utility scripts
+├── logs/                    # Application logs
+├── data/                    # Application data
+├── credentials/             # Auth credentials (Gmail API, etc.)
+├── run.py                   # Main entry point
+├── requirements.txt         # Python dependencies
+└── .env.example             # Example environment variables
+```
+
+## Setup
+
+1. Clone the repository
+2. Create a virtual environment:
+   ```
+   python -m venv venv
+   source venv/bin/activate  # On Windows: venv\Scripts\activate
+   ```
+3. Install dependencies:
+   ```
+   pip install -r requirements.txt
+   ```
+4. Copy `.env.example` to `.env` and update with your settings:
+   ```
+   cp .env.example .env
+   ```
+5. Set up the application environment:
+   ```
+   python run.py setup
+   ```
+   
+## Running the Application
+
+### API Server
+
+```
+python run.py api
+```
+
+The API will be available at http://localhost:8000
+
+### API Documentation
+
+- Swagger UI: http://localhost:8000/docs
+- ReDoc: http://localhost:8000/redoc
+
+## Development
+
+### Adding a New Route
+
+1. Create your route file in the appropriate API module
+2. Import and register the router in `src/api/v1/router.py`
+
+### Database Migrations
+
+MongoDB doesn't require formal migrations, but index updates are defined in `src/database/mongodb.py`.
+
+## Code Optimization
+
+The codebase has been optimized for clarity and maintainability:
+
+1. **Base Repository**
+   - Improved error handling with specific exception types
+   - Added comprehensive logging
+   - Enhanced type hints and documentation
+   - Better null checks and validation
+
+2. **PDF Renderer Service**
+   - Extracted constants and configuration to module level
+   - Improved component separation with smaller, focused methods
+   - Enhanced error handling with fallbacks
+   - Added input validation and better logging
+   - Optimized markdown processing
+
+3. **Code Style**
+   - Consistent docstrings with Args/Returns sections
+   - Improved method and parameter naming
+   - Better folder structure with Path objects
+   - More comprehensive error reporting
+
+## API Structure
+
+### Authentication
+
+- POST `/api/v1/auth/token` - Get JWT token
+- POST `/api/v1/auth/register` - Register new user
+- GET `/api/v1/auth/me` - Get current user info
+
+### Emails
+
+- GET `/api/v1/emails/` - List all emails
+- GET `/api/v1/emails/{email_id}` - Get specific email
+- POST `/api/v1/emails/sync` - Sync emails from Gmail
+- POST `/api/v1/emails/process/{email_id}` - Process an email into a proposal
+
+### Proposals
+
+- GET `/api/v1/proposals/` - List all proposals
+- GET `/api/v1/proposals/{proposal_id}` - Get specific proposal
+- POST `/api/v1/proposals/` - Create new proposal
+- PUT `/api/v1/proposals/{proposal_id}` - Update proposal
+- POST `/api/v1/proposals/{proposal_id}/send` - Send proposal to client 

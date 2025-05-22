@@ -11,10 +11,10 @@ from datetime import datetime, timedelta
 import msal
 import requests
 
-from models.email import Email, EmailCreate
-from services.mail.core.interfaces import BaseMailService
-from services.mail.processors.outlook_processor import OutlookMailProcessor
-from core.config import settings
+from src.models.email import Email, EmailCreate
+from src.services.mail.core.interfaces import BaseMailService
+from src.services.mail.processors.outlook_processor import OutlookMailProcessor
+from src.core.config import settings
 import webbrowser
 import re
 

@@ -6,8 +6,8 @@ from fastapi.exceptions import RequestValidationError
 import logging
 import os
 import time
-from api.v1.router import router as api_router
-from utils.error_handlers import ErrorType, ErrorHandlerMiddleware, http_exception_handler
+from src.api.v1.router import router as api_router
+from src.utils.error_handlers import ErrorType, ErrorHandlerMiddleware, http_exception_handler
 from datetime import datetime
 
 # Configure logging

@@ -7,7 +7,7 @@ import random
 import string
 from typing import Tuple, List, Optional
 
-from utils.hash import hash_password, verify_password
+from src.utils.hash import hash_password, verify_password
 
 
 class PasswordManager:

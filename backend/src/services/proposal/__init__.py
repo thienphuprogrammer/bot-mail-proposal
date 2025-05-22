@@ -13,10 +13,10 @@ Directory Structure:
 
 Usage Example:
     ```python
-    from services.proposal import create_proposal_service
-    from repositories.email_repository import EmailRepository
-    from repositories.proposal_repository import ProposalRepository
-    from repositories.sent_email_repository import SentEmailRepository
+    from src.services.proposal import create_proposal_service
+    from src.repositories.email_repository import EmailRepository
+    from src.repositories.proposal_repository import ProposalRepository
+    from src.repositories.sent_email_repository import SentEmailRepository
     
     # Set up repositories
     email_repo = EmailRepository()
@@ -36,7 +36,7 @@ Usage Example:
 """
 
 # Export core interfaces and classes
-from services.proposal.core import (
+from src.services.proposal.core import (
     BaseProposalService,
     ProposalGenerator,
     ProposalRenderer,
@@ -45,10 +45,10 @@ from services.proposal.core import (
 )
 
 # Export generator implementations
-from services.proposal.generators import AIProposalGenerator
+from src.services.proposal.generators import AIProposalGenerator
 
 # Export renderer implementations
-from services.proposal.renderers import PDFProposalRenderer
+from src.services.proposal.renderers import PDFProposalRenderer
 
 # Convenient factory function
 def create_proposal_service(

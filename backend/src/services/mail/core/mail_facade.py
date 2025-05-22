@@ -7,11 +7,11 @@ import asyncio
 from typing import Dict, List, Any, Optional
 from datetime import datetime
 
-from services.mail.core.interfaces import BaseMailService
-from services.mail.core.interfaces import MailProcessor
-from services.mail.core.interfaces import MailFilter
-from models.email import Email
-from repositories.email_repository import EmailRepository
+from src.services.mail.core.interfaces import BaseMailService
+from src.services.mail.core.interfaces import MailProcessor
+from src.services.mail.core.interfaces import MailFilter
+from src.models.email import Email
+from src.repositories.email_repository import EmailRepository
 logger = logging.getLogger(__name__)
 
 class MailServiceFacade:

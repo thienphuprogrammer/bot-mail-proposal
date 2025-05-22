@@ -6,8 +6,8 @@ import jwt
 from datetime import datetime, timedelta
 from typing import Optional, Dict, Any
 
-from services.authentication.core.interfaces import TokenService
-from core.config import settings
+from src.services.authentication.core.interfaces import TokenService
+from src.core.config import settings
 
 class JWTTokenService(TokenService):
     """JWT implementation of token service."""

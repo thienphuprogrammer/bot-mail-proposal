@@ -3,7 +3,7 @@ from typing import Optional, List, ClassVar
 from datetime import datetime
 from bson import ObjectId
 
-from models.user import PyObjectId
+from src.models.user import PyObjectId
 
 class EmailBase(BaseModel):
     """Base model for Email."""
@@ -29,7 +29,7 @@ class EmailCreate(EmailBase):
     pass
 
 class Email(EmailBase):
-    """Model for an email returned from API."""
+    """Model for an email returned from src.api."""
     id: PyObjectId = Field(default_factory=PyObjectId, alias="_id")
     
     @property
@@ -83,7 +83,7 @@ class SentEmailCreate(SentEmailBase):
     pass
 
 class SentEmail(SentEmailBase):
-    """Model for a sent email returned from API."""
+    """Model for a sent email returned from src.api."""
     id: PyObjectId = Field(default_factory=PyObjectId, alias="_id")
     
     model_config: ClassVar[dict] = {
