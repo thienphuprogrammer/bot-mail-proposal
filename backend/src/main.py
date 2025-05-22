@@ -92,8 +92,8 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
         content=error_response
     )
 
-# Include API router
-app.include_router(api_router)
+# Include API router with prefix
+app.include_router(api_router, prefix="/api/v1")
 
 @app.on_event("shutdown")
 def shutdown_event():
@@ -101,12 +101,6 @@ def shutdown_event():
     logger.info("Application shutting down")
     # Using asyncio.run could cause issues as it creates a new event loop
     # We'll keep the existing close_mongodb_connection call in lifespan instead
-
-# Health check endpoint
-@app.get("/health")
-async def health_check():
-    """Health check endpoint"""
-    return {"status": "healthy"}
 
 if __name__ == "__main__":
     import uvicorn

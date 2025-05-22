@@ -184,7 +184,7 @@ class OutlookService(BaseMailService):
             "message": "Service is working" if result else "Connection error",
             "timestamp": datetime.utcnow().isoformat()
         }
-    
+
     def fetch_emails(self, 
                     max_results: int = None, 
                     query: str = None,

@@ -33,13 +33,45 @@ class MailServiceFacade:
         self.mail_filter = mail_filter
         self.email_repository = email_repository
 
-    def fetch_and_process_emails(self, 
-                                query: str = None, 
-                                max_results: int = 20,
-                                folder: str = None,
-                                include_spam_trash: bool = None,
-                                only_recent: bool = None
-                                ) -> List[Email]:
+    def get_emails(
+            self, 
+            query: str = None, 
+            skip: int = 0,
+            limit: int = 20,
+            folder: str = None,
+           include_spam_trash: bool = None
+        ) -> List[Email]:
+        """Get emails from mail repository"""
+        filter_dict = {}
+        if query:
+            filter_dict["subject"] = {"$regex": query, "$options": "i"}
+        if folder:
+            filter_dict["folder"] = folder
+        if include_spam_trash:
+            filter_dict["is_spam"] = False
+        
+        results = []
+        emails = self.email_repository.find_all(
+            filter_dict=filter_dict,
+            skip=skip,
+            limit=limit
+        )
+        for email in emails:
+            results.append(email)
+        return results
+
+    def get_email(self, email_id: str) -> Email:
+        """Get email from mail repository"""
+        return self.email_repository.find_by_id(email_id)
+
+    def fetch_and_process_emails(
+        self, 
+        query: str = None, 
+        max_results: int = 20,
+        folder: str = None,
+        include_spam_trash: bool = None,
+        only_recent: bool = None
+    ) -> List[Email]:
         """
         Fetch, process, and categorize emails.
         
